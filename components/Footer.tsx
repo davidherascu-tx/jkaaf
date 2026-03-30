@@ -19,13 +19,13 @@ export default function Footer() {
           {/* Column 1: Brand / Logo */}
           <div className="flex flex-col items-center md:items-start gap-3">
             <Link href="/" className="flex items-center gap-3 group inline-flex">
-              <Image 
-                src="/jkaaf_logo.png" 
-                alt="JKA/AF Official Logo" 
-                width={50} 
-                height={50} 
-                className="object-contain transition-transform group-hover:scale-105"
-              />
+ <Image 
+  src="/jkaaf_logo.png" 
+  alt="JKA/AF Official Logo" 
+  width={50} 
+  height={50} 
+  className="object-contain transition-transform group-hover:scale-105 w-auto h-auto" 
+/>
               <div className="flex flex-col justify-center text-left">
                 <span className="text-lg font-extrabold tracking-widest text-gray-900 leading-none">
                   日本空手協会

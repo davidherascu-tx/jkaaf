@@ -28,15 +28,47 @@ export default async function Home() {
   };
 
   return (
-    // pt-28 stays here to keep the Slider under the Navbar
     <div className="bg-gray-50 pt-28">
       <HeroSlider />
       
-      {/* 1. Removed pt-16/pt-20 to pull content UP to the slider.
-          2. Added mt-6 for a tight, clean gap.
-          3. Removed pb-20 and used pb-10 to pull the Footer UP.
+      {/* FIXED SPACING: 
+        Changed "py-20 lg:py-24" to "pt-8 pb-20 lg:pt-10 lg:pb-24".
+        This heavily reduces the gap at the top while keeping the bottom spacing intact. 
       */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 mt-6 pb-10">
+      <section className="bg-white pt-8 pb-20 lg:pt-10 lg:pb-24 border-b border-gray-200 relative overflow-hidden">
+        {/* Subtle background decoration */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 opacity-30 pointer-events-none">
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-red-50 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="flex flex-col lg:flex-row gap-8 lg:gap-20 items-center">
+            
+            {/* Left Side: Heading & Accents */}
+            <div className="lg:w-1/3 w-full">
+              <span className="text-red-600 font-bold tracking-wider uppercase text-sm mb-3 block">
+                About Our Federation
+              </span>
+              <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight mb-6">
+                Welcome to <br/>
+                <span className="text-red-600">JKA/AF</span>
+              </h1>
+              <div className="w-20 h-1.5 bg-red-600 rounded-full"></div>
+            </div>
+
+            {/* Right Side: Paragraph */}
+            <div className="lg:w-2/3 w-full">
+              <p className="text-lg md:text-xl text-gray-600 leading-relaxed font-medium">
+                The Japan Karate Association/American Federation is an affiliation of JKA clubs across the Americas, founded by Sensei Takayuki Mikami (9th dan JKA) in 2009. We promote top quality traditional karate through hosting regular training, competition & instructor course events and conducting rank and qualification examinations affiliated with the Japan Karate Association headquartered in Tokyo, Japan.
+              </p>
+            </div>
+            
+          </div>
+        </div>
+      </section>
+      
+      {/* Featured Event and Latest News Grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 mt-16 pb-16">
         
         {/* Events Column */}
         <div className="flex flex-col gap-6">

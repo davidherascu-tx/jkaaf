@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
 export default function HeroSlider() {
@@ -8,19 +8,27 @@ export default function HeroSlider() {
       id: 1, 
       title: 'Experience Authentic Shotokan', 
       subtitle: 'Train with the world\'s most recognized Shotokan organization in the USA.',
-      // Fixed: Use exactly /slider_1.jpg (assuming the file is in your public folder)
-      img: '/slider_1.png' 
+      img: '/slider_1.webp' 
     },
     { 
       id: 2, 
       title: 'Join the JKA/AF Family', 
       subtitle: 'Find a registered dojo near you and begin your journey.',
-      // Fixed path here too. You can change this to slider_2.jpg later!
-      img: '/slider_1.png' 
-    },
+      img: '/image_3.png' 
+    }
   ];
 
   const [current, setCurrent] = useState(0);
+
+  // Set up auto-rotation every 5 seconds (5000 milliseconds)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrent((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
+    }, 5000); 
+
+    // Cleanup the timer when the component unmounts
+    return () => clearInterval(timer);
+  }, [slides.length]);
 
   return (
     <div className="w-full bg-gray-50 py-12">
@@ -39,20 +47,18 @@ export default function HeroSlider() {
                <button className="bg-red-600 text-white px-8 py-3 rounded-full font-bold shadow-md hover:bg-red-700 transition-all">
                  Join Now
                </button>
-               <button className="bg-white text-gray-800 border border-gray-200 px-8 py-3 rounded-full font-bold shadow-sm hover:bg-gray-50 transition-all">
-                 Learn More
-               </button>
+               {/* Learn More button has been successfully removed */}
             </div>
           </div>
 
           {/* Actual Image Area */}
           <div className="w-full md:w-1/2 relative min-h-[300px] md:min-h-full bg-gray-100">
-            {/* We replaced the text placeholder with the actual Image component */}
             <Image 
               src={slides[current].img}
               alt={slides[current].title}
               fill
               priority
+              sizes="(max-width: 768px) 100vw, 50vw" // Fixes the Next.js warning
               className="object-cover"
             />
           </div>
