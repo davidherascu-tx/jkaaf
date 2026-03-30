@@ -1,32 +1,22 @@
 import { client } from '@/sanity/client';
 import CalendarClient from './CalendarClient';
 
+// Refresh the calendar data every 30 seconds
 export const revalidate = 30;
 
 export default async function CalendarPage() {
-  // 1. Fetch Major Events
-  const events = await client.fetch(`
-    *[_type == "event"] {
-      _id,
-      title,
-      "date": startDate,
-      "type": "event",
-      category
-    }
-  `);
+  // Fetch both Major Events and local Calendar Entries
+  const query = `*[_type in ["event", "calendarItem"]] {
+    _id,
+    title,
+    startDate,
+    endDate,
+    "type": _type,
+    "entryType": type,
+    category
+  }`;
 
-  // 2. Fetch Simple Calendar Entries
-  const simpleItems = await client.fetch(`
-    *[_type == "calendarItem"] {
-      _id,
-      title,
-      date,
-      "type": "calendarItem"
-    }
-  `);
-
-  // Combine both arrays into one master list for the calendar
-  const combinedItems = [...events, ...simpleItems];
+  const allItems = await client.fetch(query);
 
   return (
     <div className="bg-gray-50 min-h-screen pt-28 md:pt-40 pb-24">
@@ -37,12 +27,12 @@ export default async function CalendarPage() {
             Official Calendar
           </h1>
           <p className="text-lg text-gray-600 max-w-3xl leading-relaxed mx-auto lg:mx-0">
-            View upcoming national events, seminars, holidays, and regional grading schedules. Click on any major red event to view registration details and official documents.
+            View upcoming national events, seminars, holidays, and regional schedules.
           </p>
         </div>
 
-        {/* Pass the combined data into our interactive client component */}
-        <CalendarClient items={combinedItems} />
+        {/* Pass the items to the client component */}
+        <CalendarClient items={allItems || []} />
 
       </div>
     </div>

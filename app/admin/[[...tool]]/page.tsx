@@ -43,16 +43,34 @@ const calendarSchema = {
   type: 'document',
   fields: [
     { name: 'title', title: 'Entry Title', type: 'string', description: 'e.g., Dojo Closed, Local Testing' },
-    { name: 'date', title: 'Date', type: 'date', options: { dateFormat: 'YYYY-MM-DD' } },
     { 
       name: 'type', 
       title: 'Entry Type', 
       type: 'string',
       options: {
-        list: ['Holiday / Closed', 'Local Event', 'Deadline', 'Other'],
+        list: [
+          { title: 'Seminar', value: 'Seminar' },
+          { title: 'Championship', value: 'Championship' },
+          { title: 'Holiday / closed', value: 'Holiday / closed' },
+          { title: 'Local event', value: 'Local event' }
+        ],
         layout: 'radio'
       },
-      initialValue: 'Local Event'
+      initialValue: 'Local event'
+    },
+    { 
+      name: 'startDate', 
+      title: 'Start Date', 
+      type: 'date', 
+      options: { dateFormat: 'YYYY-MM-DD' },
+      validation: (Rule: any) => Rule.required()
+    },
+    { 
+      name: 'endDate', 
+      title: 'End Date', 
+      type: 'date', 
+      options: { dateFormat: 'YYYY-MM-DD' },
+      description: 'Leave blank if it is a single-day event.'
     }
   ],
 };

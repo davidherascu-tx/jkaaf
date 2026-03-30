@@ -10,14 +10,24 @@ export default {
       validation: (Rule: any) => Rule.required(),
     },
     {
-      name: 'date',
-      title: 'Event Date',
+      name: 'startDate', // Changed from 'date' to 'startDate'
+      title: 'Start Date',
       type: 'datetime',
       validation: (Rule: any) => Rule.required(),
     },
     {
+      name: 'endDate', // Added for range support
+      title: 'End Date',
+      type: 'datetime',
+    },
+    {
       name: 'location',
       title: 'Location (e.g., Shotokan Karate, USA)',
+      type: 'string',
+    },
+    {
+      name: 'category', // Added so it shows the badge on the main page
+      title: 'Category',
       type: 'string',
     },
     {
