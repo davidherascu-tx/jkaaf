@@ -1,65 +1,95 @@
-import Image from "next/image";
+import HeroSlider from '@/components/HeroSlider';
+import { client } from '@/sanity/client';
+import Link from 'next/link';
 
-export default function Home() {
+interface SanityEvent {
+  _id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  location: string;
+}
+
+export default async function Home() {
+  const events: SanityEvent[] = await client.fetch(`*[_type == "event"] | order(startDate asc)`);
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString + 'T00:00:00').toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric'
+    });
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="bg-gray-50 min-h-screen pt-28 pb-20">
+      <HeroSlider />
+      
+      {/* Changed lg:grid-cols-3 to lg:grid-cols-2 */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 grid grid-cols-1 lg:grid-cols-2 gap-12">
+        
+        {/* Events Column */}
+{/* Events Column */}
+        <div className="flex flex-col gap-6">
+          <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
+            <span className="w-2 h-8 bg-red-600 rounded-full"></span>
+            Featured Events
+          </h2>
+          
+          <div className="space-y-4">
+            {events.length > 0 ? (
+              events.map((event: any) => (
+                <div key={event._id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-red-100 flex flex-col h-full">
+                  
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    {/* Date Pill */}
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs font-bold uppercase tracking-wider border border-red-100">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                      {formatDate(event.startDate)} 
+                      {event.endDate && event.endDate !== event.startDate && ` - ${formatDate(event.endDate)}`}
+                    </div>
+
+                    {/* NEW Category Badge */}
+                    {event.category && (
+                      <div className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold uppercase tracking-wider border border-gray-200">
+                        {event.category}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <h3 className="font-bold text-gray-900 text-xl leading-tight mb-2">{event.title}</h3>
+                  <p className="text-sm text-gray-500 mb-6 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                    {event.location}
+                  </p>
+                  
+                  <Link 
+                    href={`/events/${event._id}`}
+                    className="mt-auto block text-center w-full text-sm font-bold text-red-600 bg-red-50 py-3 rounded-lg hover:bg-red-600 hover:text-white transition-colors"
+                  >
+                    View Details
+                  </Link>
+                </div>
+              ))
+            ) : (
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center text-gray-500">
+                No upcoming events scheduled.
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        
+        {/* News Column (Club Map column is now completely gone!) */}
+        <div className="flex flex-col gap-6">
+          <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
+            <span className="w-2 h-8 bg-red-600 rounded-full"></span>
+            Latest News
+          </h2>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-full flex flex-col text-gray-400 items-center justify-center min-h-[300px]">
+             [ News Integration Coming Soon ]
+          </div>
         </div>
-      </main>
+
+      </div>
     </div>
   );
 }
