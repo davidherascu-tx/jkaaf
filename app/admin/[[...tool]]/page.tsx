@@ -36,7 +36,7 @@ const eventSchema = {
   ],
 };
 
-// 2. NEW Lightweight Calendar Schema (For simple dates)
+// 2. Existing Lightweight Calendar Schema
 const calendarSchema = {
   name: 'calendarItem',
   title: 'Calendar Entries',
@@ -94,21 +94,38 @@ const dojoSchema = {
   ],
 };
 
-// 4. Update the Custom Structure
+// 4. NEW: News Schema defined directly in the config file!
+const newsSchema = {
+  name: 'news',
+  title: 'News & Announcements',
+  type: 'document',
+  fields: [
+    { name: 'title', title: 'Article Title', type: 'string', validation: (Rule: any) => Rule.required() },
+    { name: 'slug', title: 'Slug (URL)', type: 'slug', options: { source: 'title', maxLength: 96 }, validation: (Rule: any) => Rule.required() },
+    { name: 'publishedAt', title: 'Publish Date', type: 'datetime', initialValue: () => new Date().toISOString() },
+    { name: 'mainImage', title: 'Cover Image', type: 'image', options: { hotspot: true } },
+    { name: 'excerpt', title: 'Short Excerpt', type: 'text', rows: 3 },
+    { name: 'body', title: 'Article Body', type: 'array', of: [{ type: 'block' }] },
+    { name: 'pdfDocument', title: 'PDF Attachment', type: 'file', options: { accept: 'application/pdf' } },
+  ],
+};
+
+// 5. Update the Custom Structure
 const customStructure = (S: any, context: any) => {
   return S.list()
     .title('JKA/AF Content')
     .items([
       
-      S.documentTypeListItem('event').title('Major Events').icon(() => '🏆'),
-      // Add the new Calendar link to the menu!
-      S.documentTypeListItem('calendarItem').title('Calendar Entries').icon(() => '📅'),
+      // We explicitly added the News button to your menu here!
+      S.documentTypeListItem('news').title('News & Announcements').icon(() => '📰'),
+      S.documentTypeListItem('event').title('Major Events').icon(() => '📅'),
+      S.documentTypeListItem('calendarItem').title('Calendar Entries').icon(() => '📆'),
       
       S.divider(), 
 
       S.listItem()
         .title('Dojos by State')
-        .icon(() => '🗺️')
+        .icon(() => '📍')
         .child(async () => {
           const client = context.getClient({ apiVersion: '2024-01-01' });
           const states = await client.fetch(`array::unique(*[_type == "dojo" && defined(state)].state)`);
@@ -124,16 +141,18 @@ const customStructure = (S: any, context: any) => {
                       .title(`Dojos in ${state}`)
                       .filter('_type == "dojo" && state == $state')
                       .params({ state })
+                      // FIX: This apiVersion line solves the console warning you were getting!
+                      .apiVersion('2024-01-01') 
                   )
               )
             );
         }),
 
-      S.documentTypeListItem('dojo').title('All Dojos (Master List)').icon(() => '📋'),
+      S.documentTypeListItem('dojo').title('All Dojos (Master List)').icon(() => '🥋'),
     ]);
 };
 
-// 5. Update Config
+// 6. Update Config
 const config = defineConfig({
   basePath: '/admin', 
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID as string,
@@ -141,8 +160,8 @@ const config = defineConfig({
   title: 'JKA/AF CMS',
   plugins: [structureTool({ structure: customStructure })],
   schema: {
-    // Make sure to add calendarSchema here!
-    types: [eventSchema, dojoSchema, calendarSchema], 
+    // We added the newsSchema to the active types array here!
+    types: [eventSchema, dojoSchema, calendarSchema, newsSchema], 
   },
 });
 

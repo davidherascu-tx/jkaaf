@@ -1,6 +1,7 @@
 import HeroSlider from '@/components/HeroSlider';
 import { client } from '@/sanity/client';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface SanityEvent {
   _id: string;
@@ -14,7 +15,7 @@ interface SanityEvent {
 export default async function Home() {
   const today = new Date().toISOString().split('T')[0];
 
-  // Fetch Event AND News simultaneously for better loading performance
+  // Fetch Event AND News simultaneously. (Added imageUrl to the news fetch!)
   const [event, newsItems]: [SanityEvent | null, any[]] = await Promise.all([
     client.fetch(
       `*[_type == "event" && startDate >= $today] | order(startDate asc)[0]`,
@@ -26,7 +27,8 @@ export default async function Home() {
         title,
         "slug": slug.current,
         publishedAt,
-        excerpt
+        excerpt,
+        "imageUrl": mainImage.asset->url
       }`
     )
   ]);
@@ -70,11 +72,11 @@ export default async function Home() {
       </section>
       
       {/* Featured Event and Latest News Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 mt-16 pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 mt-16 pb-24">
         
         {/* Events Column */}
         <div className="flex flex-col gap-6">
-          <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
+          <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-3">
             <span className="w-2 h-8 bg-red-600 rounded-full"></span>
             Featured Event
           </h2>
@@ -82,8 +84,8 @@ export default async function Home() {
           <div className="space-y-4">
             {event ? (
               <>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-red-100 flex flex-col">
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-lg hover:border-red-100 flex flex-col group">
+                  <div className="flex flex-wrap items-center gap-2 mb-4">
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs font-bold uppercase tracking-wider border border-red-100">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                       {formatDate(event.startDate)} 
@@ -97,15 +99,15 @@ export default async function Home() {
                     )}
                   </div>
                   
-                  <h3 className="font-bold text-gray-900 text-xl leading-tight mb-2">{event.title}</h3>
-                  <p className="text-sm text-gray-500 mb-4 flex items-center gap-2">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                  <h3 className="font-extrabold text-gray-900 text-2xl leading-tight mb-3 group-hover:text-red-600 transition-colors">{event.title}</h3>
+                  <p className="text-sm font-medium text-gray-500 mb-8 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
                     {event.location}
                   </p>
                   
                   <Link 
                     href={`/events/${event._id}`}
-                    className="block text-center w-full text-sm font-bold text-red-600 bg-red-50 py-3 rounded-lg hover:bg-red-600 hover:text-white transition-colors"
+                    className="block text-center w-full text-sm font-bold text-red-600 bg-red-50 py-3.5 rounded-xl hover:bg-red-600 hover:text-white transition-colors"
                   >
                     View Details
                   </Link>
@@ -113,55 +115,59 @@ export default async function Home() {
 
                 <Link 
                   href="/events"
-                  className="block text-center w-full text-sm font-bold text-white bg-black py-4 rounded-xl hover:bg-gray-800 transition-colors"
+                  className="block text-center w-full text-sm font-bold text-gray-700 bg-white border-2 border-gray-200 py-4 rounded-2xl hover:border-gray-900 hover:text-gray-900 transition-colors"
                 >
                   See all events
                 </Link>
               </>
             ) : (
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center text-gray-500">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500">
                 No upcoming events scheduled.
               </div>
             )}
           </div>
         </div>
         
-        {/* NEW: Dynamic News Column */}
+        {/* Dynamic News Column */}
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
+            <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-3">
               <span className="w-2 h-8 bg-red-600 rounded-full"></span>
               Latest News
             </h2>
-            <Link href="/news" className="text-sm font-bold text-red-600 hover:text-red-800 transition-colors uppercase tracking-wider">
-              View All &rarr;
+            <Link href="/news" className="text-sm font-bold text-red-600 hover:text-red-800 transition-colors uppercase tracking-wider flex items-center gap-1">
+              View All <span className="text-lg leading-none">&rsaquo;</span>
             </Link>
           </div>
           
           <div className="space-y-4">
             {newsItems && newsItems.length > 0 ? (
               newsItems.map((item) => (
-                <div key={item._id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-red-100 flex flex-col group h-full">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
-                    {new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </span>
-                  <h3 className="font-bold text-gray-900 text-lg leading-tight mb-3 group-hover:text-red-600 transition-colors">
-                    {item.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                    {item.excerpt}
-                  </p>
-                  <Link 
-                    href={`/news/${item.slug}`}
-                    className="text-sm font-bold text-red-600 hover:text-red-800 transition-colors mt-auto inline-flex items-center gap-1"
-                  >
-                    Read Article
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                  </Link>
-                </div>
+                <Link key={item._id} href={`/news/${item.slug}`} className="block bg-white rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-lg hover:border-red-100 overflow-hidden group">
+                  <div className="flex flex-row h-full">
+                    {/* Thumbnail Image */}
+                    {item.imageUrl && (
+                      <div className="w-1/3 relative bg-gray-100 overflow-hidden hidden sm:block">
+                        <Image src={item.imageUrl} alt={item.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                      </div>
+                    )}
+                    {/* Content */}
+                    <div className="p-6 flex flex-col justify-center w-full sm:w-2/3">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">
+                        {new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      </span>
+                      <h3 className="font-extrabold text-gray-900 text-lg leading-snug mb-2 group-hover:text-red-600 transition-colors line-clamp-2">
+                        {item.title}
+                      </h3>
+                      <p className="text-sm font-medium text-gray-500 line-clamp-2">
+                        {item.excerpt}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
               ))
             ) : (
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center text-gray-500 min-h-[250px] flex items-center justify-center">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500 min-h-[250px] flex items-center justify-center">
                 No news published yet.
               </div>
             )}
