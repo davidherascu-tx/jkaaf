@@ -1,4 +1,5 @@
 import event from './event'
+import news from './news' // <-- 1. Import News
 
 const calendarItem = {
   name: 'calendarItem',
@@ -24,4 +25,5 @@ const calendarItem = {
   ]
 }
 
-export const schemaTypes = [event, calendarItem]
+// 2. Export all 3 schemas!
+export const schemaTypes = [event, calendarItem, news]

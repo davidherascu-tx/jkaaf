@@ -14,7 +14,7 @@ export default function HeroSlider() {
       id: 2, 
       title: 'Join the JKA/AF Family', 
       subtitle: 'Find a registered dojo near you and begin your journey.',
-      img: '/image_3.png' 
+      img: '/kumite_2.png' 
     }
   ];
 

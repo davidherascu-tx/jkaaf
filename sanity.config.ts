@@ -1,21 +1,8 @@
 import { defineConfig } from 'sanity';
 import { structureTool } from 'sanity/structure';
 
-const eventSchema = {
-  name: 'event',
-  title: 'Event',
-  type: 'document',
-  fields: [
-    { name: 'title', title: 'Event Title', type: 'string' },
-    { name: 'startDate', title: 'Start Date', type: 'date', options: { dateFormat: 'YYYY-MM-DD' } },
-    { name: 'endDate', title: 'End Date', type: 'date', options: { dateFormat: 'YYYY-MM-DD' } },
-    { name: 'location', title: 'Location', type: 'string' },
-    { name: 'details', title: 'Detail Information', type: 'text' },
-    { name: 'registrationLink', title: 'Registration Link', type: 'url' },
-    { name: 'eventImage', title: 'Event Cover Image', type: 'image', options: { hotspot: true } },
-    { name: 'infoPdf', title: 'Information PDF', type: 'file', options: { accept: '.pdf' } },
-  ],
-};
+// Import your properly combined schemas!
+import { schemaTypes } from './sanity/schemaTypes';
 
 export default defineConfig({
   basePath: '/admin', 
@@ -24,6 +11,7 @@ export default defineConfig({
   title: 'JKA/AF CMS',
   plugins: [structureTool()],
   schema: {
-    types: [eventSchema],
+    // Tell Sanity to use your exported array (which includes News)
+    types: schemaTypes,
   },
 });

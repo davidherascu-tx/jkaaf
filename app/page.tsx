@@ -14,11 +14,22 @@ interface SanityEvent {
 export default async function Home() {
   const today = new Date().toISOString().split('T')[0];
 
-  // Fetch only the single next upcoming event
-  const event: SanityEvent | null = await client.fetch(
-    `*[_type == "event" && startDate >= $today] | order(startDate asc)[0]`,
-    { today }
-  );
+  // Fetch Event AND News simultaneously for better loading performance
+  const [event, newsItems]: [SanityEvent | null, any[]] = await Promise.all([
+    client.fetch(
+      `*[_type == "event" && startDate >= $today] | order(startDate asc)[0]`,
+      { today }
+    ),
+    client.fetch(
+      `*[_type == "news"] | order(publishedAt desc)[0...2] {
+        _id,
+        title,
+        "slug": slug.current,
+        publishedAt,
+        excerpt
+      }`
+    )
+  ]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -31,20 +42,14 @@ export default async function Home() {
     <div className="bg-gray-50 pt-28">
       <HeroSlider />
       
-      {/* FIXED SPACING: 
-        Changed "py-20 lg:py-24" to "pt-8 pb-20 lg:pt-10 lg:pb-24".
-        This heavily reduces the gap at the top while keeping the bottom spacing intact. 
-      */}
+      {/* Intro Section */}
       <section className="bg-white pt-8 pb-20 lg:pt-10 lg:pb-24 border-b border-gray-200 relative overflow-hidden">
-        {/* Subtle background decoration */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 opacity-30 pointer-events-none">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-red-50 rounded-full blur-3xl"></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="flex flex-col lg:flex-row gap-8 lg:gap-20 items-center">
-            
-            {/* Left Side: Heading & Accents */}
             <div className="lg:w-1/3 w-full">
               <span className="text-red-600 font-bold tracking-wider uppercase text-sm mb-3 block">
                 About Our Federation
@@ -55,14 +60,11 @@ export default async function Home() {
               </h1>
               <div className="w-20 h-1.5 bg-red-600 rounded-full"></div>
             </div>
-
-            {/* Right Side: Paragraph */}
             <div className="lg:w-2/3 w-full">
               <p className="text-lg md:text-xl text-gray-600 leading-relaxed font-medium">
                 The Japan Karate Association/American Federation is an affiliation of JKA clubs across the Americas, founded by Sensei Takayuki Mikami (9th dan JKA) in 2009. We promote top quality traditional karate through hosting regular training, competition & instructor course events and conducting rank and qualification examinations affiliated with the Japan Karate Association headquartered in Tokyo, Japan.
               </p>
             </div>
-            
           </div>
         </div>
       </section>
@@ -124,16 +126,48 @@ export default async function Home() {
           </div>
         </div>
         
-        {/* News Column */}
+        {/* NEW: Dynamic News Column */}
         <div className="flex flex-col gap-6">
-          <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
-            <span className="w-2 h-8 bg-red-600 rounded-full"></span>
-            Latest News
-          </h2>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-full flex flex-col text-gray-400 items-center justify-center min-h-[300px]">
-              [ News Integration Coming Soon ]
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
+              <span className="w-2 h-8 bg-red-600 rounded-full"></span>
+              Latest News
+            </h2>
+            <Link href="/news" className="text-sm font-bold text-red-600 hover:text-red-800 transition-colors uppercase tracking-wider">
+              View All &rarr;
+            </Link>
+          </div>
+          
+          <div className="space-y-4">
+            {newsItems && newsItems.length > 0 ? (
+              newsItems.map((item) => (
+                <div key={item._id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-red-100 flex flex-col group h-full">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                    {new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                  <h3 className="font-bold text-gray-900 text-lg leading-tight mb-3 group-hover:text-red-600 transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                    {item.excerpt}
+                  </p>
+                  <Link 
+                    href={`/news/${item.slug}`}
+                    className="text-sm font-bold text-red-600 hover:text-red-800 transition-colors mt-auto inline-flex items-center gap-1"
+                  >
+                    Read Article
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                  </Link>
+                </div>
+              ))
+            ) : (
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center text-gray-500 min-h-[250px] flex items-center justify-center">
+                No news published yet.
+              </div>
+            )}
           </div>
         </div>
+
       </div>
     </div>
   );
