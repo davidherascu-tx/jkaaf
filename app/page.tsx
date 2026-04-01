@@ -22,7 +22,8 @@ export default async function Home() {
       { today }
     ),
     client.fetch(
-      `*[_type == "news"] | order(publishedAt desc)[0...2] {
+      // Fetch 3 items instead of 2
+      `*[_type == "news"] | order(publishedAt desc)[0...3] {
         _id,
         title,
         "slug": slug.current,
@@ -81,7 +82,6 @@ export default async function Home() {
               <span className="w-2 h-8 bg-red-600 rounded-full"></span>
               Featured Event
             </h2>
-            {/* UPDATED: View All Events */}
             <Link href="/events" className="text-sm font-bold text-red-600 hover:text-red-800 transition-colors uppercase tracking-wider flex items-center gap-1">
               View All Events <span className="text-lg leading-none">&rsaquo;</span>
             </Link>
@@ -132,7 +132,6 @@ export default async function Home() {
               <span className="w-2 h-8 bg-red-600 rounded-full"></span>
               Latest News
             </h2>
-            {/* UPDATED: View All News */}
             <Link href="/news" className="text-sm font-bold text-red-600 hover:text-red-800 transition-colors uppercase tracking-wider flex items-center gap-1">
               View All News <span className="text-lg leading-none">&rsaquo;</span>
             </Link>
@@ -141,7 +140,7 @@ export default async function Home() {
           <div className="space-y-4">
             {newsItems && newsItems.length > 0 ? (
               newsItems.map((item) => (
-                <Link key={item._id} href={`/news/${item.slug}`} className="block bg-white rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-red-100 overflow-hidden group p-4">
+                <Link key={item._id} href={`/news/${item.slug}`} className="block bg-white rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-red-100 overflow-hidden group p-4 sm:p-5">
                   <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center h-full">
                     
                     {/* Left: Image & Text Wrapper */}
@@ -155,9 +154,10 @@ export default async function Home() {
 
                       {/* Content */}
                       <div className="flex flex-col justify-center flex-grow">
-                        {/* UPDATED: Date Badge perfectly matching the event design */}
-                        <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-red-50 text-red-700 rounded-md text-xs font-bold uppercase tracking-wider border border-red-100 w-fit mb-2">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        
+                        {/* THE NEW GREY DATE DESIGN */}
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-gray-500 rounded-md text-xs font-bold border border-gray-200 shadow-sm w-fit mb-2">
+                          <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                           {new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </div>
                         
@@ -171,7 +171,7 @@ export default async function Home() {
                       </div>
                     </div>
                     
-                    {/* UPDATED: Bigger Read More button on the Right */}
+                    {/* YOUR ORIGINAL READ MORE BUTTON */}
                     <div className="w-full sm:w-auto flex-shrink-0 mt-2 sm:mt-0">
                       <div className="flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 bg-gray-50 border border-gray-200 text-gray-800 rounded-xl text-sm font-bold group-hover:bg-red-600 group-hover:text-white group-hover:border-red-600 transition-all shadow-sm group-hover:shadow text-center">
                         Read more <span className="text-lg leading-none">&rsaquo;</span>
