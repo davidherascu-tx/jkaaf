@@ -104,6 +104,18 @@ const newsSchema = {
     { name: 'slug', title: 'Slug (URL)', type: 'slug', options: { source: 'title', maxLength: 96 }, validation: (Rule: any) => Rule.required() },
     { name: 'publishedAt', title: 'Publish Date', type: 'datetime', initialValue: () => new Date().toISOString() },
     { name: 'mainImage', title: 'Cover Image', type: 'image', options: { hotspot: true } },
+    
+    // NEW: Easy Drag-and-Drop Field for unlimited pictures
+    { 
+      name: 'gallery', 
+      title: 'Additional Pictures (Drag & Drop)', 
+      type: 'array', 
+      of: [{ type: 'image' }],
+      options: {
+        layout: 'grid', // This is the magic setting that makes it a drag-and-drop grid in Sanity!
+      }
+    },
+    
     { name: 'excerpt', title: 'Short Excerpt', type: 'text', rows: 3 },
     { name: 'body', title: 'Article Body', type: 'array', of: [{ type: 'block' }] },
     { name: 'pdfDocument', title: 'PDF Attachment', type: 'file', options: { accept: 'application/pdf' } },
