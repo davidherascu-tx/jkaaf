@@ -2,9 +2,9 @@ import Image from 'next/image';
 
 export default function ContactPage() {
   return (
-    // Removed "min-h-screen" and changed "pb-24" to "pb-12 lg:pb-16"
-    <div className="bg-gray-50 pt-28 md:pt-36 pb-12 lg:pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    // ADDED: "flex-1 w-full flex flex-col" so the gray background stretches all the way down!
+    <div className="bg-gray-50 flex-1 w-full flex flex-col pt-28 md:pt-36 pb-12 lg:pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden flex flex-col lg:flex-row">
           

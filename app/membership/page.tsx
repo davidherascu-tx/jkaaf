@@ -2,8 +2,8 @@ import Image from 'next/image';
 
 export default function MembershipPage() {
   return (
-    <div className="bg-gray-50 min-h-screen pt-28 md:pt-36 pb-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="bg-gray-50 flex-1 w-full flex flex-col pt-28 md:pt-36 pb-12 lg:pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden flex flex-col lg:flex-row">
           

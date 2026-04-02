@@ -8,10 +8,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  // State for mobile dropdown
   const [aboutOpen, setAboutOpen] = useState(false);
 
-  // Animation trigger for scrolling
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -23,10 +21,12 @@ export default function Navbar() {
   const navLinks = [
     { 
       name: 'About JKA/AF', 
-      path: '#', // Changed to '#' so it no longer links to an empty page
+      path: '#',
       dropdown: [
         { name: 'Sensei Takayuki Mikami', path: '/about/mikami' },
         { name: 'Board Members', path: '/about/board' },
+        // NEW: Technical Exams added here!
+        { name: 'Technical Exams', path: '/technical' },
         { name: 'Policies', path: '/about/policies' },
       ]
     },
@@ -38,7 +38,6 @@ export default function Navbar() {
     { name: 'Shop', path: 'https://your-shop-link.com', external: true },
   ];
 
-  // Prevent scrolling when mobile menu is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -60,7 +59,6 @@ export default function Navbar() {
       >
         <div className="flex justify-between items-center">
           
-          {/* Logo & Kanji Section */}
           <Link href="/" className="flex-shrink-0 flex items-center gap-3 group" onClick={() => setIsOpen(false)}>
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 transition-transform duration-300 group-hover:scale-105">
               <Image 
@@ -81,12 +79,10 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Menu */}
           <div className="hidden lg:flex items-center space-x-1 xl:space-x-4">
             {navLinks.map((link) => (
               <div key={link.name} className="relative group">
                 
-                {/* Condition: If path is '#', render a button instead of a Link */}
                 {link.path === '#' ? (
                   <button className="relative px-3 py-2 text-sm font-semibold text-gray-700 hover:text-red-600 transition-colors flex items-center gap-1.5 focus:outline-none cursor-pointer">
                     {link.name}
@@ -104,14 +100,12 @@ export default function Navbar() {
                   >
                     {link.name}
                     
-                    {/* External Link Icon */}
                     {link.external && (
                       <svg className="w-3.5 h-3.5 mb-0.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                       </svg>
                     )}
 
-                    {/* Dropdown Chevron */}
                     {link.dropdown && (
                       <svg className="w-4 h-4 text-gray-400 group-hover:text-red-600 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     )}
@@ -119,7 +113,6 @@ export default function Navbar() {
                   </Link>
                 )}
 
-                {/* Desktop Dropdown */}
                 {link.dropdown && (
                   <div className="absolute left-0 top-full pt-4 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 ease-out w-56 z-50">
                     <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-2 overflow-hidden flex flex-col gap-1">
@@ -138,7 +131,6 @@ export default function Navbar() {
               </div>
             ))}
             
-            {/* Elegant Join Button */}
             <div className="pl-3 ml-2 border-l border-gray-200">
               <Link 
                 href="/membership"
@@ -149,7 +141,6 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Mobile Menu Toggle Button */}
           <button 
             onClick={() => setIsOpen(!isOpen)}
             className="lg:hidden p-2 text-gray-600 hover:text-red-600 focus:outline-none transition-colors"
@@ -165,7 +156,6 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile Menu Overlay */}
       <div 
         className={`absolute top-[110%] left-0 right-0 px-4 sm:px-6 pointer-events-auto transition-all duration-400 ease-in-out lg:hidden origin-top ${
           isOpen ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-0 pointer-events-none'
@@ -176,7 +166,6 @@ export default function Navbar() {
             <div key={link.name} className="flex flex-col border-b border-gray-50 last:border-0" style={{ transitionDelay: `${isOpen ? index * 50 : 0}ms` }}>
               <div className="flex justify-between items-center w-full">
                 
-                {/* Condition: Render button for # paths, Link for valid pages */}
                 {link.path === '#' ? (
                   <button 
                     onClick={() => setAboutOpen(!aboutOpen)}
@@ -201,7 +190,6 @@ export default function Navbar() {
                         </svg>
                       )}
                     </Link>
-                    {/* Secondary chevron button for items that are actual links BUT have dropdowns */}
                     {link.dropdown && (
                       <button onClick={() => setAboutOpen(!aboutOpen)} className="p-4 mr-2 text-gray-500 hover:text-red-600 focus:outline-none">
                         <svg className={`w-5 h-5 transition-transform ${aboutOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -212,7 +200,6 @@ export default function Navbar() {
 
               </div>
               
-              {/* Mobile Dropdown Content */}
               {link.dropdown && aboutOpen && (
                 <div className="bg-gray-50 flex flex-col py-2 px-6 border-t border-gray-100 border-b border-gray-100">
                   {link.dropdown.map((sublink) => (
