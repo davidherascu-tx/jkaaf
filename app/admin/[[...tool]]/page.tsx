@@ -4,7 +4,6 @@ import { NextStudio } from 'next-sanity/studio';
 import { defineConfig } from 'sanity';
 import { structureTool } from 'sanity/structure';
 
-// 1. Existing Event Schema
 const eventSchema = {
   name: 'event',
   title: 'Event',
@@ -36,7 +35,6 @@ const eventSchema = {
   ],
 };
 
-// 2. Existing Lightweight Calendar Schema
 const calendarSchema = {
   name: 'calendarItem',
   title: 'Calendar Entries',
@@ -75,26 +73,34 @@ const calendarSchema = {
   ],
 };
 
-// 3. Existing Dojo Schema
 const dojoSchema = {
   name: 'dojo',
   title: 'Registered Dojos',
   type: 'document',
   fields: [
     { name: 'isPrimary', title: 'Primary State Dojo', type: 'boolean', initialValue: false },
+    { name: 'isCollegiateClub', title: 'Collegiate Club', type: 'boolean', initialValue: false, description: 'Check this box to flag this dojo as a Collegiate Club' },
     { name: 'name', title: 'Dojo Name', type: 'string' },
     { name: 'instructor', title: 'Chief Instructor', type: 'string' },
-    { name: 'address', title: 'Street Address', type: 'string' },
-    { name: 'city', title: 'City', type: 'string' },
-    { name: 'state', title: 'State (Abbreviation)', type: 'string' },
-    { name: 'zip', title: 'Zip Code', type: 'string' },
+    
+    // PHYSICAL DOJO ADDRESS
+    { name: 'address', title: 'Dojo Street Address', type: 'string' },
+    { name: 'city', title: 'Dojo City', type: 'string' },
+    { name: 'state', title: 'Dojo State (Abbreviation, e.g. TX)', type: 'string' },
+    { name: 'zip', title: 'Dojo Zip Code', type: 'string' },
+
+    // CONTACT / MAILING ADDRESS
+    { name: 'contactAddress', title: 'Contact Street Address', type: 'string' },
+    { name: 'contactCity', title: 'Contact City', type: 'string' },
+    { name: 'contactState', title: 'Contact State (Abbreviation)', type: 'string' },
+    { name: 'contactZip', title: 'Contact Zip Code', type: 'string' },
+
     { name: 'phone', title: 'Phone Number', type: 'string' },
     { name: 'email', title: 'Email Address', type: 'string' },
     { name: 'website', title: 'Website URL', type: 'url' },
   ],
 };
 
-// 4. NEW: News Schema defined directly in the config file!
 const newsSchema = {
   name: 'news',
   title: 'News & Announcements',
@@ -104,37 +110,27 @@ const newsSchema = {
     { name: 'slug', title: 'Slug (URL)', type: 'slug', options: { source: 'title', maxLength: 96 }, validation: (Rule: any) => Rule.required() },
     { name: 'publishedAt', title: 'Publish Date', type: 'datetime', initialValue: () => new Date().toISOString() },
     { name: 'mainImage', title: 'Cover Image', type: 'image', options: { hotspot: true } },
-    
-    // NEW: Easy Drag-and-Drop Field for unlimited pictures
     { 
       name: 'gallery', 
       title: 'Additional Pictures (Drag & Drop)', 
       type: 'array', 
       of: [{ type: 'image' }],
-      options: {
-        layout: 'grid', // This is the magic setting that makes it a drag-and-drop grid in Sanity!
-      }
+      options: { layout: 'grid' }
     },
-    
     { name: 'excerpt', title: 'Short Excerpt', type: 'text', rows: 3 },
     { name: 'body', title: 'Article Body', type: 'array', of: [{ type: 'block' }] },
     { name: 'pdfDocument', title: 'PDF Attachment', type: 'file', options: { accept: 'application/pdf' } },
   ],
 };
 
-// 5. Update the Custom Structure
 const customStructure = (S: any, context: any) => {
   return S.list()
     .title('JKA/AF Content')
     .items([
-      
-      // We explicitly added the News button to your menu here!
       S.documentTypeListItem('news').title('News & Announcements').icon(() => '📰'),
-      S.documentTypeListItem('event').title('Major Events').icon(() => '📅'),
-      S.documentTypeListItem('calendarItem').title('Calendar Entries').icon(() => '📆'),
-      
+      S.documentTypeListItem('event').title('Major Events').icon(() => '🥋'),
+      S.documentTypeListItem('calendarItem').title('Calendar Entries').icon(() => '📅'),
       S.divider(), 
-
       S.listItem()
         .title('Dojos by State')
         .icon(() => '📍')
@@ -153,18 +149,15 @@ const customStructure = (S: any, context: any) => {
                       .title(`Dojos in ${state}`)
                       .filter('_type == "dojo" && state == $state')
                       .params({ state })
-                      // FIX: This apiVersion line solves the console warning you were getting!
                       .apiVersion('2024-01-01') 
                   )
               )
             );
         }),
-
-      S.documentTypeListItem('dojo').title('All Dojos (Master List)').icon(() => '🥋'),
+      S.documentTypeListItem('dojo').title('All Dojos (Master List)').icon(() => '📋'),
     ]);
 };
 
-// 6. Update Config
 const config = defineConfig({
   basePath: '/admin', 
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID as string,
@@ -172,7 +165,6 @@ const config = defineConfig({
   title: 'JKA/AF CMS',
   plugins: [structureTool({ structure: customStructure })],
   schema: {
-    // We added the newsSchema to the active types array here!
     types: [eventSchema, dojoSchema, calendarSchema, newsSchema], 
   },
 });

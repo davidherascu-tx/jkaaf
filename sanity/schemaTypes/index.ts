@@ -1,5 +1,6 @@
 import event from './event'
-import news from './news' // <-- 1. Import News
+import news from './news'
+import dojo from './dojo' // <-- 1. Import the Dojo schema!
 
 const calendarItem = {
   name: 'calendarItem',
@@ -25,5 +26,5 @@ const calendarItem = {
   ]
 }
 
-// 2. Export all 3 schemas!
-export const schemaTypes = [event, calendarItem, news]
+// 2. Add 'dojo' to the export array so Sanity knows it exists!
+export const schemaTypes = [event, calendarItem, news, dojo]
