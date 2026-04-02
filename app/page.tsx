@@ -15,14 +15,15 @@ interface SanityEvent {
 export default async function Home() {
   const today = new Date().toISOString().split('T')[0];
 
-  // Fetch Event AND News simultaneously. (Added imageUrl to the news fetch!)
+  // Fetch Event AND News simultaneously.
   const [event, newsItems]: [SanityEvent | null, any[]] = await Promise.all([
     client.fetch(
       `*[_type == "event" && startDate >= $today] | order(startDate asc)[0]`,
       { today }
     ),
     client.fetch(
-      `*[_type == "news"] | order(publishedAt desc)[0...2] {
+      // Fetch 3 items instead of 2
+      `*[_type == "news"] | order(publishedAt desc)[0...3] {
         _id,
         title,
         "slug": slug.current,
@@ -76,50 +77,46 @@ export default async function Home() {
         
         {/* Events Column */}
         <div className="flex flex-col gap-6">
-          <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-3">
-            <span className="w-2 h-8 bg-red-600 rounded-full"></span>
-            Featured Event
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-3">
+              <span className="w-2 h-8 bg-red-600 rounded-full"></span>
+              Featured Event
+            </h2>
+            <Link href="/events" className="text-sm font-bold text-red-600 hover:text-red-800 transition-colors uppercase tracking-wider flex items-center gap-1">
+              View All Events <span className="text-lg leading-none">&rsaquo;</span>
+            </Link>
+          </div>
           
           <div className="space-y-4">
             {event ? (
-              <>
-                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-lg hover:border-red-100 flex flex-col group">
-                  <div className="flex flex-wrap items-center gap-2 mb-4">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs font-bold uppercase tracking-wider border border-red-100">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                      {formatDate(event.startDate)} 
-                      {event.endDate && event.endDate !== event.startDate && ` - ${formatDate(event.endDate)}`}
-                    </div>
-
-                    {event.category && (
-                      <div className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold uppercase tracking-wider border border-gray-200">
-                        {event.category}
-                      </div>
-                    )}
+              <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-red-100 flex flex-col group h-full">
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs font-bold uppercase tracking-wider border border-red-100">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    {formatDate(event.startDate)} 
+                    {event.endDate && event.endDate !== event.startDate && ` - ${formatDate(event.endDate)}`}
                   </div>
-                  
-                  <h3 className="font-extrabold text-gray-900 text-2xl leading-tight mb-3 group-hover:text-red-600 transition-colors">{event.title}</h3>
-                  <p className="text-sm font-medium text-gray-500 mb-8 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
-                    {event.location}
-                  </p>
-                  
-                  <Link 
-                    href={`/events/${event._id}`}
-                    className="block text-center w-full text-sm font-bold text-red-600 bg-red-50 py-3.5 rounded-xl hover:bg-red-600 hover:text-white transition-colors"
-                  >
-                    View Details
-                  </Link>
-                </div>
 
+                  {event.category && (
+                    <div className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold uppercase tracking-wider border border-gray-200">
+                      {event.category}
+                    </div>
+                  )}
+                </div>
+                
+                <h3 className="font-extrabold text-gray-900 text-2xl leading-tight mb-3 group-hover:text-red-600 transition-colors">{event.title}</h3>
+                <p className="text-sm font-medium text-gray-500 mb-8 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                  {event.location}
+                </p>
+                
                 <Link 
-                  href="/events"
-                  className="block text-center w-full text-sm font-bold text-gray-700 bg-white border-2 border-gray-200 py-4 rounded-2xl hover:border-gray-900 hover:text-gray-900 transition-colors"
+                  href={`/events/${event._id}`}
+                  className="block text-center w-full text-sm font-bold text-red-600 bg-red-50 py-3.5 rounded-xl hover:bg-red-600 hover:text-white transition-colors mt-auto"
                 >
-                  See all events
+                  View Details
                 </Link>
-              </>
+              </div>
             ) : (
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500">
                 No upcoming events scheduled.
@@ -136,33 +133,51 @@ export default async function Home() {
               Latest News
             </h2>
             <Link href="/news" className="text-sm font-bold text-red-600 hover:text-red-800 transition-colors uppercase tracking-wider flex items-center gap-1">
-              View All <span className="text-lg leading-none">&rsaquo;</span>
+              View All News <span className="text-lg leading-none">&rsaquo;</span>
             </Link>
           </div>
           
           <div className="space-y-4">
             {newsItems && newsItems.length > 0 ? (
               newsItems.map((item) => (
-                <Link key={item._id} href={`/news/${item.slug}`} className="block bg-white rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-lg hover:border-red-100 overflow-hidden group">
-                  <div className="flex flex-row h-full">
-                    {/* Thumbnail Image */}
-                    {item.imageUrl && (
-                      <div className="w-1/3 relative bg-gray-100 overflow-hidden hidden sm:block">
-                        <Image src={item.imageUrl} alt={item.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                <Link key={item._id} href={`/news/${item.slug}`} className="block bg-white rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-red-100 overflow-hidden group p-4 sm:p-5">
+                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center h-full">
+                    
+                    {/* Left: Image & Text Wrapper */}
+                    <div className="flex flex-row gap-4 w-full flex-grow items-center">
+                      {/* Thumbnail Image */}
+                      {item.imageUrl && (
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 relative rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
+                          <Image src={item.imageUrl} alt={item.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                        </div>
+                      )}
+
+                      {/* Content */}
+                      <div className="flex flex-col justify-center flex-grow">
+                        
+                        {/* THE NEW GREY DATE DESIGN */}
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-gray-500 rounded-md text-xs font-bold border border-gray-200 shadow-sm w-fit mb-2">
+                          <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                          {new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
+                        
+                        <h3 className="font-extrabold text-gray-900 text-lg leading-snug mb-1 group-hover:text-red-600 transition-colors line-clamp-2">
+                          {item.title}
+                        </h3>
+                        
+                        <p className="text-sm font-medium text-gray-500 line-clamp-1">
+                          {item.excerpt}
+                        </p>
                       </div>
-                    )}
-                    {/* Content */}
-                    <div className="p-6 flex flex-col justify-center w-full sm:w-2/3">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">
-                        {new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                      </span>
-                      <h3 className="font-extrabold text-gray-900 text-lg leading-snug mb-2 group-hover:text-red-600 transition-colors line-clamp-2">
-                        {item.title}
-                      </h3>
-                      <p className="text-sm font-medium text-gray-500 line-clamp-2">
-                        {item.excerpt}
-                      </p>
                     </div>
+                    
+                    {/* YOUR ORIGINAL READ MORE BUTTON */}
+                    <div className="w-full sm:w-auto flex-shrink-0 mt-2 sm:mt-0">
+                      <div className="flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 bg-gray-50 border border-gray-200 text-gray-800 rounded-xl text-sm font-bold group-hover:bg-red-600 group-hover:text-white group-hover:border-red-600 transition-all shadow-sm group-hover:shadow text-center">
+                        Read more <span className="text-lg leading-none">&rsaquo;</span>
+                      </div>
+                    </div>
+
                   </div>
                 </Link>
               ))

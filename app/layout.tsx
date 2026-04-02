@@ -14,9 +14,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="bg-white text-black min-h-screen flex flex-col" suppressHydrationWarning>
+      {/* CHANGED: bg-gray-50 replaces bg-white so the background gap is perfectly gray */}
+      <body className="bg-gray-50 text-black min-h-screen flex flex-col" suppressHydrationWarning>
         <Navbar />
-        <main className="flex-grow">{children}</main>
+        
+        {/* The 'flex-grow' safely pushes the footer to the bottom */}
+        <main className="flex-grow flex flex-col">{children}</main>
+        
         <Footer />
       </body>
     </html>
