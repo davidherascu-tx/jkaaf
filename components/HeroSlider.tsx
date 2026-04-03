@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function HeroSlider() {
   const slides = [
@@ -44,9 +45,9 @@ export default function HeroSlider() {
               {slides[current].subtitle}
             </p>
             <div className="flex gap-4 flex-wrap">
-               <button className="bg-red-600 text-white px-8 py-3 rounded-full font-bold shadow-md hover:bg-red-700 transition-all">
+               <Link href="/membership" className="inline-block bg-red-600 text-white px-8 py-3 rounded-full font-bold shadow-md hover:bg-red-700 transition-all text-center">
                  Join Now
-               </button>
+               </Link>
                {/* Learn More button has been successfully removed */}
             </div>
           </div>
