@@ -1,5 +1,6 @@
 import { client } from '@/sanity/client';
 import Link from 'next/link';
+import SummerCampDetails from '@/components/SummerCampDetails';
 
 interface EventDetails {
   title: string;
@@ -12,6 +13,9 @@ interface EventDetails {
   imageUrl: string | null;
   pdfUrl: string | null;
 }
+
+const isSummerCamp2026 = (title: string) =>
+  /2026.*jka.*af.*national.*summer\s*camp/i.test(title);
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
   const resolvedParams = await Promise.resolve(params);
@@ -111,47 +115,58 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {event.imageUrl && (
-          <div className="w-full bg-gray-50 rounded-2xl mb-12 flex justify-center p-4 border border-gray-100 shadow-inner">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src={event.imageUrl} 
-              alt={`${event.title} Official Poster`} 
-              className="max-w-full h-auto max-h-[700px] object-contain rounded-xl shadow-sm" 
-            />
-          </div>
-        )}
-
-        {event.registrationLink && (
-          <div className="mb-12 bg-red-50 border border-red-100 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-1">Ready to join?</h3>
-              <p className="text-gray-600 text-sm">Secure your spot for this event by registering online.</p>
+        {(() => {
+          const posterUrl = isSummerCamp2026(event.title)
+            ? '/2026_summer_camp_new_orleans.webp'
+            : event.imageUrl;
+          return posterUrl ? (
+            <div className="w-full bg-gray-50 rounded-2xl mb-12 flex justify-center p-4 border border-gray-100 shadow-inner">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={posterUrl}
+                alt={`${event.title} Official Poster`}
+                className="max-w-full h-auto max-h-[700px] object-contain rounded-xl shadow-sm"
+              />
             </div>
-            <a 
-              href={event.registrationLink} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="w-full sm:w-auto text-center bg-red-600 text-white font-bold px-8 py-3.5 rounded-xl hover:bg-red-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-            >
-              Register Now
-            </a>
-          </div>
+          ) : null;
+        })()}
+
+        {isSummerCamp2026(event.title) ? (
+          <SummerCampDetails campPacketUrl="/2026_summer_camp_new_orleans.pdf" />
+        ) : (
+          <>
+            {event.registrationLink && (
+              <div className="mb-12 bg-red-50 border border-red-100 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">Ready to join?</h3>
+                  <p className="text-gray-600 text-sm">Secure your spot for this event by registering online.</p>
+                </div>
+                <a
+                  href={event.registrationLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto text-center bg-red-600 text-white font-bold px-8 py-3.5 rounded-xl hover:bg-red-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  Register Now
+                </a>
+              </div>
+            )}
+
+            {event.details && (
+              <div className="mb-16">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <span className="w-1.5 h-6 bg-red-600 rounded-full"></span>
+                  Event Details
+                </h2>
+                <div className="prose max-w-none text-gray-700 whitespace-pre-line leading-relaxed text-lg bg-white p-6 sm:p-8 rounded-2xl border border-gray-100 shadow-sm">
+                  {event.details}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
-        {event.details && (
-          <div className="mb-16">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-              <span className="w-1.5 h-6 bg-red-600 rounded-full"></span>
-              Event Details
-            </h2>
-            <div className="prose max-w-none text-gray-700 whitespace-pre-line leading-relaxed text-lg bg-white p-6 sm:p-8 rounded-2xl border border-gray-100 shadow-sm">
-              {event.details}
-            </div>
-          </div>
-        )}
-
-        {event.pdfUrl && (
+        {!isSummerCamp2026(event.title) && event.pdfUrl && (
           <div className="mt-12">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
