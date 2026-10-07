@@ -1,26 +1,107 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f9fafb; /* Matches your bg-gray-50 */
-  --foreground: #171717;
+  --background: #f5f4f1;
+  --foreground: #0b0b0c;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Palette overrides: restyles every existing page that uses these utilities */
+@theme {
+  --color-gray-50: #f5f4f1;
+  --color-gray-100: #ebe9e4;
+  --color-gray-200: #dddad3;
+  --color-gray-400: #9b978d;
+  --color-gray-500: #6f6b62;
+  --color-gray-600: #55524a;
+  --color-gray-700: #3a3832;
+  --color-gray-800: #1f1e1b;
+  --color-gray-900: #0b0b0c;
+  --color-red-50: #fdf0ee;
+  --color-red-100: #fadcd7;
+  --color-red-600: #d4281c;
+  --color-red-700: #b01e14;
+  --color-red-800: #8a170f;
+}
+
+/* ---- Classic design: restore the original look ---- */
+html[data-design="classic"] {
+  --background: #f9fafb;
+  --foreground: #171717;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+  font-size: 100%;
+}
+html[data-design="classic"] body {
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: auto;
+  letter-spacing: normal;
+}
+html[data-design="classic"] h1,
+html[data-design="classic"] h2,
+html[data-design="classic"] h3 { letter-spacing: normal; }
+html[data-design="classic"] ::selection { background: Highlight; color: HighlightText; }
+
+/* ---- Design switching: show only the active variant ---- */
+.design-modern, .design-classic { display: contents; }
+html[data-design="classic"] .design-modern { display: none; }
+html:not([data-design="classic"]) .design-classic { display: none; }
+
+/* Toggle: highlight the active option */
+html[data-design="classic"] .design-toggle [data-design-option="classic"],
+html:not([data-design="classic"]) .design-toggle [data-design-option="modern"] {
+  background: #d4281c;
+  color: #fff;
+}
+
+html {
+  font-size: 100%;
+  scroll-behavior: smooth;
+}
+
+@media (min-width: 1280px) {
+  html:not([data-design="classic"]) { font-size: 106.25%; } /* 17px */
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
 }
+
+h1, h2, h3 { letter-spacing: -0.03em; }
+
+::selection { background: #d4281c; color: #fff; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fade-up 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up { animation: none; }
+  html { scroll-behavior: auto; }
+}
+

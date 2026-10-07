@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 
-export default function Navbar() {
+export default function ClassicNavbar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -53,8 +53,8 @@ export default function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 mt-4 sm:mt-6 flex justify-center pointer-events-none">
       <nav 
-        className={`pointer-events-auto w-full max-w-7xl bg-white/80 backdrop-blur-xl border border-black/5 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.25)] rounded-full transition-all duration-300 ease-in-out ${
-          scrolled ? 'py-2 px-4 sm:px-6' : 'py-3 px-5 sm:px-8'
+        className={`pointer-events-auto w-full max-w-7xl bg-white/90 backdrop-blur-md border border-gray-100 shadow-lg rounded-lg transition-all duration-300 ease-in-out ${
+          scrolled ? 'py-2 px-4 sm:px-6' : 'py-4 px-6 sm:px-8'
         }`}
       >
         <div className="flex justify-between items-center">
@@ -70,7 +70,7 @@ export default function Navbar() {
               />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-lg sm:text-xl font-extrabold tracking-wider text-gray-900 leading-tight">
+              <span className="text-lg sm:text-xl font-extrabold tracking-widest text-gray-900 leading-tight">
                 日本空手協会
               </span>
               <span className="text-xs sm:text-sm font-bold text-red-600 tracking-wider">
@@ -84,7 +84,7 @@ export default function Navbar() {
               <div key={link.name} className="relative group">
                 
                 {link.path === '#' ? (
-                  <button className="relative px-3 py-2 text-[0.95rem] font-semibold text-gray-800 hover:text-red-600 transition-colors flex items-center gap-1.5 focus:outline-none cursor-pointer">
+                  <button className="relative px-3 py-2 text-sm font-semibold text-gray-700 hover:text-red-600 transition-colors flex items-center gap-1.5 focus:outline-none cursor-pointer">
                     {link.name}
                     {link.dropdown && (
                       <svg className="w-4 h-4 text-gray-400 group-hover:text-red-600 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -96,7 +96,7 @@ export default function Navbar() {
                     href={link.path}
                     target={link.external ? "_blank" : undefined}
                     rel={link.external ? "noopener noreferrer" : undefined}
-                    className="relative px-3 py-2 text-[0.95rem] font-semibold text-gray-800 hover:text-red-600 transition-colors flex items-center gap-1.5"
+                    className="relative px-3 py-2 text-sm font-semibold text-gray-700 hover:text-red-600 transition-colors flex items-center gap-1.5"
                   >
                     {link.name}
                     
@@ -134,7 +134,7 @@ export default function Navbar() {
             <div className="pl-3 ml-2 border-l border-gray-200">
               <Link 
                 href="/membership"
-                className="inline-flex items-center justify-center px-6 py-2.5 text-[0.95rem] font-semibold text-white bg-gray-900 rounded-full hover:bg-red-600 transition-colors"
+                className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg hover:border-red-600 hover:text-red-600 transition-all bg-white"
               >
                 Join JKA/AF
               </Link>
@@ -161,7 +161,7 @@ export default function Navbar() {
           isOpen ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-0 pointer-events-none'
         }`}
       >
-        <div className="bg-white rounded-3xl shadow-2xl border border-black/5 overflow-hidden flex flex-col py-2 max-h-[75vh] overflow-y-auto">
+        <div className="bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden flex flex-col py-2 max-h-[75vh] overflow-y-auto">
           {navLinks.map((link, index) => (
             <div key={link.name} className="flex flex-col border-b border-gray-50 last:border-0" style={{ transitionDelay: `${isOpen ? index * 50 : 0}ms` }}>
               <div className="flex justify-between items-center w-full">
@@ -221,7 +221,7 @@ export default function Navbar() {
             <Link 
               href="/membership"
               onClick={() => setIsOpen(false)}
-              className="flex w-full items-center justify-center px-4 py-3.5 text-base font-semibold text-white bg-red-600 rounded-full hover:bg-red-700 transition-colors"
+              className="flex w-full items-center justify-center px-4 py-3 text-base font-semibold text-gray-700 border border-gray-300 rounded-lg hover:border-red-600 hover:text-red-600 transition-colors bg-white"
             >
               Join JKA/AF
             </Link>

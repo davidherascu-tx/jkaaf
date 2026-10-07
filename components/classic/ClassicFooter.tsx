@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function Footer() {
+export default function ClassicFooter() {
   const pathname = usePathname();
 
   // Hide the footer entirely if we are on the Sanity Studio admin page
@@ -12,9 +12,9 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-gray-900 text-white mt-auto">
-      <div className="max-w-[90rem] mx-auto px-5 sm:px-8 lg:px-12 pt-16 pb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-center md:items-start text-center md:text-left">
+    <footer className="bg-white border-t border-gray-100 mt-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center md:items-start text-center md:text-left">
           
           {/* Column 1: Brand / Logo */}
           <div className="flex flex-col items-center md:items-start gap-3">
@@ -27,10 +27,10 @@ export default function Footer() {
                 className="object-contain transition-transform group-hover:scale-105 w-auto h-auto" 
               />
               <div className="flex flex-col justify-center text-left">
-                <span className="text-xl font-extrabold tracking-wider text-white leading-none">
+                <span className="text-lg font-extrabold tracking-widest text-gray-900 leading-none">
                   日本空手協会
                 </span>
-                <span className="text-base font-bold text-red-600 tracking-wider mt-1">
+                <span className="text-xs font-bold text-red-600 tracking-wider mt-1">
                   JKA/AF
                 </span>
               </div>
@@ -39,25 +39,25 @@ export default function Footer() {
 
           {/* Column 2: Contact Information */}
           <div className="flex flex-col items-center md:items-start gap-2">
-            <h3 className="text-sm font-bold text-white/50 uppercase tracking-[0.25em] mb-2">Contact</h3>
-            <a href="mailto:JKAAFUSA@gmail.com" className="text-base text-white hover:text-red-600 transition-colors font-medium">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Contact</h3>
+            <a href="mailto:JKAAFUSA@gmail.com" className="text-gray-600 hover:text-red-600 transition-colors font-medium">
               JKAAFUSA@gmail.com
             </a>
-            <a href="tel:5048356825" className="text-base text-white hover:text-red-600 transition-colors font-medium">
+            <a href="tel:5048356825" className="text-gray-600 hover:text-red-600 transition-colors font-medium">
               (504) 835-6825
             </a>
           </div>
 
           {/* Column 3: Social Media */}
           <div className="flex flex-col items-center md:items-end gap-3">
-            <h3 className="text-sm font-bold text-white/50 uppercase tracking-[0.25em] mb-1">Follow</h3>
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-1">Follow</h3>
             <div className="flex gap-4">
               {/* Facebook Icon */}
               <a 
                 href="https://www.facebook.com/groups/238228469631491/" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-white/70 hover:text-white transition-colors" 
+                className="text-gray-400 hover:text-blue-600 transition-colors" 
                 aria-label="Facebook"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -70,7 +70,7 @@ export default function Footer() {
                 href="https://www.instagram.com/jkaafusa/" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-white/70 hover:text-white transition-colors" 
+                className="text-gray-400 hover:text-pink-600 transition-colors" 
                 aria-label="Instagram"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -83,7 +83,7 @@ export default function Footer() {
                 href="https://www.youtube.com/@JKAAmericanFederation" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-white/70 hover:text-white transition-colors" 
+                className="text-gray-400 hover:text-red-600 transition-colors" 
                 aria-label="YouTube"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -96,13 +96,13 @@ export default function Footer() {
         </div>
 
         {/* Bottom Copyright Bar */}
-        <div className="mt-16 pt-8 border-t border-white/15 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-white/50">
+        <div className="mt-12 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-xs text-gray-500">
             &copy; {new Date().getFullYear()} Japan Karate Association / American Federation. All Rights Reserved.
           </p>
-          <div className="flex gap-4 text-sm text-white/50">
-            <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+          <div className="flex gap-4 text-xs text-gray-400">
+            <Link href="/privacy" className="hover:text-gray-900 transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-gray-900 transition-colors">Terms of Service</Link>
           </div>
         </div>
       </div>
