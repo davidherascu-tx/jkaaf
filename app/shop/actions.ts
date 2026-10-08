@@ -23,14 +23,14 @@ export interface ShopFormState {
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
 
 export async function addToCartAction(productId: number, _prev: ShopFormState, fd: FormData): Promise<ShopFormState> {
-  const product = getProductById(productId);
+  const product = await getProductById(productId);
   if (!product || !product.active) return { error: 'This product is not available.' };
 
   const selections: Selections = {};
   for (const opt of product.options) selections[opt.id] = str(fd, `opt_${opt.id}`);
   const qty = Math.min(Math.max(parseInt(str(fd, 'quantity'), 10) || 1, 1), 99);
 
-  const err = addToCart(await ensureCartOwner(), product, selections, qty);
+  const err = await addToCart(await ensureCartOwner(), product, selections, qty);
   if (err) return { error: err };
   revalidatePath('/shop/cart');
   return { added: Date.now() };
@@ -40,14 +40,14 @@ export async function updateCartAction(itemId: number, fd: FormData) {
   const owner = await getCartOwner();
   if (!owner) return;
   const qty = parseInt(str(fd, 'quantity'), 10);
-  setCartQuantity(owner, itemId, Number.isFinite(qty) ? qty : 1);
+  await setCartQuantity(owner, itemId, Number.isFinite(qty) ? qty : 1);
   revalidatePath('/shop/cart');
 }
 
 export async function removeCartItemAction(itemId: number) {
   const owner = await getCartOwner();
   if (!owner) return;
-  setCartQuantity(owner, itemId, 0);
+  await setCartQuantity(owner, itemId, 0);
   revalidatePath('/shop/cart');
 }
 
@@ -57,7 +57,7 @@ export async function checkoutAction(_prev: ShopFormState, fd: FormData): Promis
   const owner = await getCartOwner();
   if (!owner) return { error: 'Your cart is empty.' };
 
-  const cart = getCart(owner);
+  const cart = await getCart(owner);
   const ship = {
     name: str(fd, 'ship_name'),
     address: str(fd, 'ship_address'),
@@ -82,11 +82,11 @@ export async function checkoutAction(_prev: ShopFormState, fd: FormData): Promis
       rank: str(fd, 'rank'),
     });
     if ('error' in res) return { error: res.error };
-    user = getUserById(res.id);
+    user = await getUserById(res.id);
     if (!user) return { error: 'Could not create your account. Please try again.' };
   }
 
-  const result = placeOrder(user, ship, str(fd, 'notes').slice(0, 1000));
+  const result = await placeOrder(user, ship, str(fd, 'notes').slice(0, 1000));
   if ('error' in result) return { error: result.error };
   redirect(`/shop/orders/${result.orderId}?placed=1`);
 }

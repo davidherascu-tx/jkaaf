@@ -3,17 +3,19 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { parseDollars } from '@/lib/money';
 import { textToChoices } from '@/lib/optionsText';
 import {
   deleteProduct,
+  isAdminUser,
   ORDER_STATUSES,
   reviewApplication,
   saveProduct,
   setOrderStatus,
+  setProductActive,
   setStock,
   setUserStatus,
+  slugTaken,
   type Order,
   type ProductOption,
 } from '@/lib/shop';
@@ -91,10 +93,9 @@ export async function saveProductAction(p: ProductPayload): Promise<{ error: str
     }
   }
 
-  const clash = db().prepare('SELECT id FROM products WHERE slug = ? AND id IS NOT ?').get(slug, p.id);
-  if (clash) return { error: 'Another product already uses that slug.' };
+  if (await slugTaken(slug, p.id)) return { error: 'Another product already uses that slug.' };
 
-  saveProduct(p.id, {
+  await saveProduct(p.id, {
     name,
     slug,
     description: p.description.trim(),
@@ -117,14 +118,14 @@ export async function saveProductAction(p: ProductPayload): Promise<{ error: str
 
 export async function toggleProductAction(id: number, active: boolean) {
   await requireAdmin();
-  db().prepare('UPDATE products SET active = ? WHERE id = ?').run(active ? 1 : 0, id);
+  await setProductActive(id, active);
   revalidatePath('/shop', 'layout');
   revalidatePath('/shop-admin/products');
 }
 
 export async function deleteProductAction(id: number) {
   await requireAdmin();
-  deleteProduct(id);
+  await deleteProduct(id);
   revalidatePath('/shop', 'layout');
   revalidatePath('/shop-admin/products');
 }
@@ -133,8 +134,8 @@ export async function deleteProductAction(id: number) {
 export async function setStockAction(id: number, fd: FormData) {
   await requireAdmin();
   const raw = String(fd.get('stock') ?? '').trim();
-  if (raw === '') setStock(id, null);
-  else if (/^\d{1,6}$/.test(raw)) setStock(id, parseInt(raw, 10));
+  if (raw === '') await setStock(id, null);
+  else if (/^\d{1,6}$/.test(raw)) await setStock(id, parseInt(raw, 10));
   revalidatePath('/shop', 'layout');
   revalidatePath('/shop-admin/products');
 }
@@ -142,7 +143,7 @@ export async function setStockAction(id: number, fd: FormData) {
 export async function setOrderStatusAction(id: number, status: string) {
   await requireAdmin();
   if (!(ORDER_STATUSES as readonly string[]).includes(status)) return;
-  setOrderStatus(id, status as Order['status']);
+  await setOrderStatus(id, status as Order['status']);
   revalidatePath('/shop-admin', 'layout');
   revalidatePath('/shop', 'layout');
 }
@@ -150,16 +151,16 @@ export async function setOrderStatusAction(id: number, status: string) {
 export async function setUserStatusAction(id: number, status: string) {
   const admin = await requireAdmin();
   if (id === admin.id) return;
-  if (db().prepare("SELECT 1 FROM users WHERE id = ? AND role = 'admin'").get(id)) return;
+  if (await isAdminUser(id)) return;
   if (status !== 'approved' && status !== 'rejected' && status !== 'pending') return;
-  setUserStatus(id, status);
+  await setUserStatus(id, status);
   revalidatePath('/shop-admin', 'layout');
 }
 
 export async function reviewApplicationAction(id: number, status: 'approved' | 'rejected', fd: FormData) {
   await requireAdmin();
   if (status !== 'approved' && status !== 'rejected') return;
-  reviewApplication(id, status, String(fd.get('note') ?? '').trim().slice(0, 1000));
+  await reviewApplication(id, status, String(fd.get('note') ?? '').trim().slice(0, 1000));
   revalidatePath('/shop-admin', 'layout');
   redirect('/shop-admin/applications');
 }

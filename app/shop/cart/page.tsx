@@ -9,7 +9,7 @@ export const metadata = { title: 'Cart | JKA/AF' };
 
 export default async function CartPage() {
   const owner = await getCartOwner();
-  const cart = owner ? getCart(owner) : [];
+  const cart = owner ? await getCart(owner) : [];
   const hasError = cart.some((l) => 'error' in l.priced);
   const total = cart.reduce((s, l) => s + ('error' in l.priced ? 0 : l.priced.unitCents * l.quantity), 0);
 

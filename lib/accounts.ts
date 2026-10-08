@@ -1,5 +1,5 @@
 import 'server-only';
-import { db } from '@/lib/db';
+import { db, ok } from '@/lib/db';
 import { hashPassword } from '@/lib/password';
 import { adoptGuestCart } from '@/lib/cart';
 import { createSession } from '@/lib/auth';
@@ -26,13 +26,26 @@ export async function createAccount(a: AccountInput): Promise<{ error: string } 
   if (!EMAIL_RE.test(email)) return { error: 'Enter a valid email address.' };
   if (a.password.length < 8) return { error: 'Password must be at least 8 characters.' };
   if (a.password !== a.confirm) return { error: 'Passwords do not match.' };
-  if (db().prepare('SELECT 1 FROM users WHERE email = ?').get(email)) {
-    return { error: 'An account with this email already exists. Please sign in instead.' };
+
+  const res = await db()
+    .from('users')
+    .insert({
+      email,
+      password_hash: hashPassword(a.password),
+      first_name: first,
+      last_name: last,
+      phone: a.phone?.trim() ?? '',
+      dojo: a.dojo?.trim() ?? '',
+      rank: a.rank?.trim() ?? '',
+    })
+    .select('id')
+    .single();
+  if (res.error) {
+    // 23505 = unique violation (email already registered)
+    if (res.error.code === '23505') return { error: 'An account with this email already exists. Please sign in instead.' };
+    throw new Error(res.error.message);
   }
-  const r = db()
-    .prepare('INSERT INTO users (email, password_hash, first_name, last_name, phone, dojo, rank) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(email, hashPassword(a.password), first, last, a.phone?.trim() ?? '', a.dojo?.trim() ?? '', a.rank?.trim() ?? '');
-  const id = Number(r.lastInsertRowid);
+  const id = ok(res).id as number;
   await createSession(id);
   await adoptGuestCart(id);
   return { id };

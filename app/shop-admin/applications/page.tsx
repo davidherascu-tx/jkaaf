@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { listApplications } from '@/lib/shop';
 import { Badge, Card } from '@/components/shop/ui';
 
-export default function AdminApplications() {
-  const apps = listApplications();
+export default async function AdminApplications() {
+  const apps = await listApplications();
   return (
     <>
       <h1 className="text-3xl font-extrabold text-gray-900 mb-6">Dojo applications</h1>

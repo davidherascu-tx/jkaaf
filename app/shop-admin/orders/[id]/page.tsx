@@ -8,10 +8,10 @@ import { Badge, Card, secondaryBtn } from '@/components/shop/ui';
 
 export default async function AdminOrder({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const found = /^\d+$/.test(id) ? getOrder(Number(id)) : null;
+  const found = /^\d+$/.test(id) ? await getOrder(Number(id)) : null;
   if (!found) notFound();
   const { order, items } = found;
-  const member = getUserById(order.user_id);
+  const member = await getUserById(order.user_id);
 
   return (
     <div className="max-w-3xl space-y-5">

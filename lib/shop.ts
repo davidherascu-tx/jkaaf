@@ -1,14 +1,14 @@
 import 'server-only';
-import { db, tx } from '@/lib/db';
-import type { User } from '@/lib/auth';
-import { currentPriceCents, type Product, type ProductInput, type ProductOption } from '@/lib/products';
+import { db, ok, one, type DbRow, rows as list, ts } from '@/lib/db';
+import { toUser, USER_COLS, type User } from '@/lib/auth';
+import { currentPriceCents, type Product, type ProductInput } from '@/lib/products';
 
 // ---------- Products ----------
 
 export { isOnSale, currentPriceCents } from '@/lib/products';
 export type { Choice, Product, ProductInput, ProductOption } from '@/lib/products';
 
-type Row = Record<string, unknown>;
+type Row = DbRow;
 
 function toProduct(r: Row): Product {
   return {
@@ -22,8 +22,8 @@ function toProduct(r: Row): Product {
     sale_price_cents: (r.sale_price_cents as number | null) ?? null,
     sale_ends_on: (r.sale_ends_on as string) ?? '',
     stock: (r.stock as number | null) ?? null,
-    free_shipping: r.free_shipping === undefined ? true : !!r.free_shipping,
-    options: JSON.parse(r.options_json as string) as ProductOption[],
+    free_shipping: r.free_shipping !== false,
+    options: (r.options as Product['options']) ?? [],
     physical: !!r.physical,
     requires_dojo_approval: !!r.requires_dojo_approval,
     active: !!r.active,
@@ -31,72 +31,61 @@ function toProduct(r: Row): Product {
   };
 }
 
-export function listProducts(includeInactive = false): Product[] {
-  const rows = db()
-    .prepare(`SELECT * FROM products ${includeInactive ? '' : 'WHERE active = 1'} ORDER BY sort, id`)
-    .all();
-  return rows.map(toProduct);
+export async function listProducts(includeInactive = false): Promise<Product[]> {
+  let q = db().from('products').select('*');
+  if (!includeInactive) q = q.eq('active', true);
+  return list(await q.order('sort').order('id')).map(toProduct);
 }
 
-export function getProductBySlug(slug: string): Product | null {
-  const r = db().prepare('SELECT * FROM products WHERE slug = ?').get(slug);
+export async function getProductBySlug(slug: string): Promise<Product | null> {
+  const r = ok(await db().from('products').select('*').eq('slug', slug).maybeSingle());
   return r ? toProduct(r) : null;
 }
 
-export function getProductById(id: number): Product | null {
-  const r = db().prepare('SELECT * FROM products WHERE id = ?').get(id);
+export async function getProductById(id: number): Promise<Product | null> {
+  const r = ok(await db().from('products').select('*').eq('id', id).maybeSingle());
   return r ? toProduct(r) : null;
 }
 
-export function saveProduct(id: number | null, p: ProductInput): number {
-  const args = [
-    p.name,
-    p.slug,
-    p.description,
-    p.price_cents,
-    p.price_note,
-    p.image_url,
-    p.sale_price_cents,
-    p.sale_ends_on,
-    p.stock,
-    p.free_shipping ? 1 : 0,
-    JSON.stringify(p.options),
-    p.physical ? 1 : 0,
-    p.requires_dojo_approval ? 1 : 0,
-    p.active ? 1 : 0,
-    p.sort,
-  ];
+export async function saveProduct(id: number | null, p: ProductInput): Promise<number> {
+  const row = {
+    name: p.name,
+    slug: p.slug,
+    description: p.description,
+    price_cents: p.price_cents,
+    price_note: p.price_note,
+    image_url: p.image_url,
+    sale_price_cents: p.sale_price_cents,
+    sale_ends_on: p.sale_ends_on,
+    stock: p.stock,
+    free_shipping: p.free_shipping,
+    options: p.options,
+    physical: p.physical,
+    requires_dojo_approval: p.requires_dojo_approval,
+    active: p.active,
+    sort: p.sort,
+  };
   if (id === null) {
-    const r = db()
-      .prepare(
-        `INSERT INTO products (name, slug, description, price_cents, price_note, image_url, sale_price_cents, sale_ends_on, stock, free_shipping, options_json, physical, requires_dojo_approval, active, sort)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(...(args as []));
-    return Number(r.lastInsertRowid);
+    return one(await db().from('products').insert(row).select('id').single()).id as number;
   }
-  db()
-    .prepare(
-      `UPDATE products SET name=?, slug=?, description=?, price_cents=?, price_note=?, image_url=?, sale_price_cents=?, sale_ends_on=?, stock=?, free_shipping=?, options_json=?,
-       physical=?, requires_dojo_approval=?, active=?, sort=? WHERE id=?`,
-    )
-    .run(...(args as []), id);
+  ok(await db().from('products').update(row).eq('id', id));
   return id;
 }
 
-export function deleteProduct(id: number) {
-  const used = db().prepare('SELECT 1 FROM order_items WHERE product_id = ? LIMIT 1').get(id);
-  if (used) {
+export async function deleteProduct(id: number) {
+  const used = await db().from('order_items').select('*', { count: 'exact', head: true }).eq('product_id', id);
+  if (used.error) throw new Error(used.error.message);
+  if ((used.count ?? 0) > 0) {
     // Keep order history intact: hide instead of delete.
-    db().prepare('UPDATE products SET active = 0 WHERE id = ?').run(id);
+    ok(await db().from('products').update({ active: false }).eq('id', id));
     return 'archived' as const;
   }
-  db().prepare('DELETE FROM products WHERE id = ?').run(id);
+  ok(await db().from('products').delete().eq('id', id));
   return 'deleted' as const;
 }
 
-export function setStock(id: number, stock: number | null) {
-  db().prepare('UPDATE products SET stock = ? WHERE id = ?').run(stock, id);
+export async function setStock(id: number, stock: number | null) {
+  ok(await db().from('products').update({ stock }).eq('id', id));
 }
 
 export const isSoldOut = (p: Product) => p.stock !== null && p.stock <= 0;
@@ -148,11 +137,16 @@ export function priceItem(
   return { unitCents: unit, lines, recurring, needsShipping };
 }
 
-export function approvedClubNames(userId: number): string[] {
-  return db()
-    .prepare("SELECT dojo_name FROM dojo_applications WHERE user_id = ? AND status = 'approved' ORDER BY dojo_name")
-    .all(userId)
-    .map((r) => r.dojo_name as string);
+export async function approvedClubNames(userId: number): Promise<string[]> {
+  const rows = list(
+    await db()
+      .from('dojo_applications')
+      .select('dojo_name')
+      .eq('user_id', userId)
+      .eq('status', 'approved')
+      .order('dojo_name'),
+  );
+  return rows.map((r) => r.dojo_name as string);
 }
 
 // ---------- Cart ----------
@@ -160,8 +154,11 @@ export function approvedClubNames(userId: number): string[] {
 /** A cart belongs to a signed-in user or, for guests, to a cookie token. */
 export type CartOwner = { userId: number; token?: undefined } | { userId?: undefined; token: string };
 
-const ownerWhere = (o: CartOwner): [string, string | number] =>
-  o.userId !== undefined ? ['user_id = ?', o.userId] : ['cart_token = ?', o.token];
+/** Restricts a query to this owner's cart rows. */
+function forOwner<T>(q: T, o: CartOwner): T {
+  const f = q as unknown as { eq(column: string, value: string | number): T };
+  return o.userId !== undefined ? f.eq('user_id', o.userId) : f.eq('cart_token', o.token);
+}
 
 export interface CartLine {
   id: number;
@@ -171,38 +168,37 @@ export interface CartLine {
   priced: PricedLine | { error: string };
 }
 
-/** Units of a product already in this cart, excluding one line. */
-function inCart(owner: CartOwner, productId: number, exceptItemId = 0): number {
-  const [where, arg] = ownerWhere(owner);
-  const r = db()
-    .prepare(`SELECT COALESCE(SUM(quantity), 0) AS n FROM cart_items WHERE ${where} AND product_id = ? AND id != ?`)
-    .get(arg, productId, exceptItemId);
-  return Number(r?.n ?? 0);
-}
-
-/** Message if `quantity` more units cannot be supplied from stock, otherwise null. */
-function stockProblem(product: Product, owner: CartOwner, quantity: number, exceptItemId = 0): string | null {
+/** Message if the product cannot supply `wanted` units in total (cart + this request), otherwise null. */
+function stockProblem(product: Product, wanted: number): string | null {
   if (product.stock === null) return null;
   if (product.stock <= 0) return `${product.name} is out of stock.`;
-  if (inCart(owner, product.id, exceptItemId) + quantity > product.stock) {
-    return `Only ${product.stock} of ${product.name} in stock.`;
-  }
+  if (wanted > product.stock) return `Only ${product.stock} of ${product.name} in stock.`;
   return null;
 }
 
-export function getCart(owner: CartOwner): CartLine[] {
-  const clubs = owner.userId ? approvedClubNames(owner.userId) : [];
-  const [where, arg] = ownerWhere(owner);
-  const rows = db().prepare(`SELECT * FROM cart_items WHERE ${where} ORDER BY id`).all(arg);
+const canonical = (s: Selections) => JSON.stringify(Object.keys(s).sort().map((k) => [k, s[k]]));
+
+export async function getCart(owner: CartOwner): Promise<CartLine[]> {
+  const clubs = owner.userId !== undefined ? await approvedClubNames(owner.userId) : [];
+  const rows = list(await forOwner(db().from('cart_items').select('*'), owner).order('id'));
+  if (rows.length === 0) return [];
+
+  const ids = [...new Set(rows.map((r) => r.product_id as number))];
+  const products = new Map(list(await db().from('products').select('*').in('id', ids)).map((r) => [r.id as number, toProduct(r)]));
+
+  // Total units per product across all lines, for the stock check.
+  const perProduct = new Map<number, number>();
+  for (const r of rows) perProduct.set(r.product_id as number, (perProduct.get(r.product_id as number) ?? 0) + (r.quantity as number));
+
   const lines: CartLine[] = [];
   for (const r of rows) {
-    const product = getProductById(r.product_id as number);
+    const product = products.get(r.product_id as number);
     if (!product || !product.active) {
-      db().prepare('DELETE FROM cart_items WHERE id = ?').run(r.id);
+      ok(await db().from('cart_items').delete().eq('id', r.id));
       continue;
     }
-    const selections = JSON.parse(r.selections_json as string) as Selections;
-    const stockErr = stockProblem(product, owner, r.quantity as number, r.id as number);
+    const selections = (r.selections ?? {}) as Selections;
+    const stockErr = stockProblem(product, perProduct.get(product.id) ?? 0);
     lines.push({
       id: r.id as number,
       product,
@@ -214,55 +210,59 @@ export function getCart(owner: CartOwner): CartLine[] {
   return lines;
 }
 
-export function cartCount(owner: CartOwner): number {
-  const [where, arg] = ownerWhere(owner);
-  const r = db().prepare(`SELECT COALESCE(SUM(quantity), 0) AS n FROM cart_items WHERE ${where}`).get(arg);
-  return Number(r?.n ?? 0);
+export async function cartCount(owner: CartOwner): Promise<number> {
+  const rows = list(await forOwner(db().from('cart_items').select('quantity'), owner));
+  return rows.reduce((s, r) => s + (r.quantity as number), 0);
 }
 
-export function addToCart(owner: CartOwner, product: Product, selections: Selections, quantity: number): string | null {
-  const clubs = owner.userId ? approvedClubNames(owner.userId) : [];
+export async function addToCart(
+  owner: CartOwner,
+  product: Product,
+  selections: Selections,
+  quantity: number,
+): Promise<string | null> {
+  const clubs = owner.userId !== undefined ? await approvedClubNames(owner.userId) : [];
   const priced = priceItem(product, selections, clubs);
   if ('error' in priced) return priced.error;
-  const stockErr = stockProblem(product, owner, quantity);
+
+  const sameProduct = list(await forOwner(db().from('cart_items').select('id, quantity, selections'), owner).eq('product_id', product.id));
+  const inCart = sameProduct.reduce((s, r) => s + (r.quantity as number), 0);
+  const stockErr = stockProblem(product, inCart + quantity);
   if (stockErr) return stockErr;
-  const json = JSON.stringify(selections);
-  const [where, arg] = ownerWhere(owner);
-  const existing = db()
-    .prepare(`SELECT id FROM cart_items WHERE ${where} AND product_id = ? AND selections_json = ?`)
-    .get(arg, product.id, json);
+
+  const existing = sameProduct.find((r) => canonical((r.selections ?? {}) as Selections) === canonical(selections));
   if (existing) {
-    db().prepare('UPDATE cart_items SET quantity = MIN(quantity + ?, 99) WHERE id = ?').run(quantity, existing.id);
+    ok(
+      await db()
+        .from('cart_items')
+        .update({ quantity: Math.min((existing.quantity as number) + quantity, 99) })
+        .eq('id', existing.id),
+    );
   } else {
-    db()
-      .prepare('INSERT INTO cart_items (user_id, cart_token, product_id, selections_json, quantity) VALUES (?, ?, ?, ?, ?)')
-      .run(owner.userId ?? null, owner.token ?? null, product.id, json, quantity);
+    ok(
+      await db().from('cart_items').insert({
+        user_id: owner.userId ?? null,
+        cart_token: owner.token ?? null,
+        product_id: product.id,
+        selections,
+        quantity,
+      }),
+    );
   }
   return null;
 }
 
-export function setCartQuantity(owner: CartOwner, itemId: number, quantity: number) {
-  const [where, arg] = ownerWhere(owner);
-  if (quantity <= 0) db().prepare(`DELETE FROM cart_items WHERE id = ? AND ${where}`).run(itemId, arg);
-  else db().prepare(`UPDATE cart_items SET quantity = ? WHERE id = ? AND ${where}`).run(Math.min(quantity, 99), itemId, arg);
+export async function setCartQuantity(owner: CartOwner, itemId: number, quantity: number) {
+  if (quantity <= 0) {
+    ok(await forOwner(db().from('cart_items').delete().eq('id', itemId), owner));
+  } else {
+    ok(await forOwner(db().from('cart_items').update({ quantity: Math.min(quantity, 99) }).eq('id', itemId), owner));
+  }
 }
 
 /** Move a guest cart into a user's cart (called after sign in / sign up). */
-export function mergeGuestCart(token: string, userId: number) {
-  tx(() => {
-    const rows = db().prepare('SELECT * FROM cart_items WHERE cart_token = ?').all(token);
-    for (const r of rows) {
-      const existing = db()
-        .prepare('SELECT id FROM cart_items WHERE user_id = ? AND product_id = ? AND selections_json = ?')
-        .get(userId, r.product_id, r.selections_json);
-      if (existing) {
-        db().prepare('UPDATE cart_items SET quantity = MIN(quantity + ?, 99) WHERE id = ?').run(r.quantity, existing.id);
-        db().prepare('DELETE FROM cart_items WHERE id = ?').run(r.id);
-      } else {
-        db().prepare('UPDATE cart_items SET user_id = ?, cart_token = NULL WHERE id = ?').run(userId, r.id);
-      }
-    }
-  });
+export async function mergeGuestCart(token: string, userId: number) {
+  ok(await db().rpc('merge_guest_cart', { p_token: token, p_user_id: userId }));
 }
 
 // ---------- Orders ----------
@@ -305,77 +305,87 @@ export function cartNeedsShipping(cart: CartLine[]): boolean {
   return cart.some((l) => !('error' in l.priced) && l.priced.needsShipping);
 }
 
-export function placeOrder(user: User, ship: ShippingInfo, notes: string): { orderId: number } | { error: string } {
-  const cart = getCart({ userId: user.id });
+export async function placeOrder(
+  user: User,
+  ship: ShippingInfo,
+  notes: string,
+): Promise<{ orderId: number } | { error: string }> {
+  const cart = await getCart({ userId: user.id });
   if (cart.length === 0) return { error: 'Your cart is empty.' };
   let total = 0;
   for (const l of cart) {
     if ('error' in l.priced) return { error: `${l.product.name}: ${l.priced.error}` };
     total += l.priced.unitCents * l.quantity;
   }
-  let orderId: number;
-  try {
-    orderId = tx(() => {
-    // Re-check and take stock inside the transaction so two buyers cannot oversell.
-    const wanted = new Map<number, number>();
-    for (const l of cart) wanted.set(l.product.id, (wanted.get(l.product.id) ?? 0) + l.quantity);
-    for (const [pid, qty] of wanted) {
-      const p = getProductById(pid);
-      if (p && p.stock !== null) {
-        if (p.stock < qty) throw new Error(`Only ${Math.max(p.stock, 0)} of ${p.name} left in stock.`);
-        db().prepare('UPDATE products SET stock = stock - ? WHERE id = ?').run(qty, pid);
-      }
-    }
-    const r = db()
-      .prepare(
-        `INSERT INTO orders (user_id, total_cents, ship_name, ship_address, ship_city, ship_state, ship_zip, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(user.id, total, ship.name, ship.address, ship.city, ship.state, ship.zip, notes);
-    const id = Number(r.lastInsertRowid);
-    const ins = db().prepare(
-      `INSERT INTO order_items (order_id, product_id, name, unit_cents, quantity, selections_json, recurring, free_shipping)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    );
-    for (const l of cart) {
+
+  // One database function does stock check + order + items + empty cart atomically.
+  const res = await db().rpc('place_order', {
+    p_user_id: user.id,
+    p_total: total,
+    p_ship_name: ship.name,
+    p_ship_address: ship.address,
+    p_ship_city: ship.city,
+    p_ship_state: ship.state,
+    p_ship_zip: ship.zip,
+    p_notes: notes,
+    p_items: cart.map((l) => {
       const p = l.priced as PricedLine;
-      ins.run(id, l.product.id, l.product.name, p.unitCents, l.quantity, JSON.stringify(p.lines), p.recurring ? 1 : 0, l.product.free_shipping ? 1 : 0);
-    }
-    db().prepare('DELETE FROM cart_items WHERE user_id = ?').run(user.id);
-    return id;
-    });
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Could not place the order.' };
-  }
-  return { orderId };
+      return {
+        product_id: l.product.id,
+        name: l.product.name,
+        unit_cents: p.unitCents,
+        quantity: l.quantity,
+        selections: p.lines,
+        recurring: p.recurring,
+        free_shipping: l.product.free_shipping,
+      };
+    }),
+  });
+  if (res.error) return { error: res.error.message };
+  return { orderId: Number(res.data) };
 }
 
-const ORDER_SELECT = `SELECT o.*, u.first_name || ' ' || u.last_name AS customer_name, u.email AS customer_email
-  FROM orders o JOIN users u ON u.id = o.user_id`;
+const toOrder = (r: Row): Order => {
+  const u = r.users as { first_name: string; last_name: string; email: string } | null;
+  return {
+    id: r.id as number,
+    user_id: r.user_id as number,
+    status: r.status as Order['status'],
+    payment_method: r.payment_method as string,
+    total_cents: r.total_cents as number,
+    ship_name: r.ship_name as string,
+    ship_address: r.ship_address as string,
+    ship_city: r.ship_city as string,
+    ship_state: r.ship_state as string,
+    ship_zip: r.ship_zip as string,
+    notes: r.notes as string,
+    created_at: ts(r.created_at as string),
+    customer_name: u ? `${u.first_name} ${u.last_name}` : undefined,
+    customer_email: u?.email,
+  };
+};
 
-export function listOrders(userId?: number): Order[] {
-  const rows = userId
-    ? db().prepare(`${ORDER_SELECT} WHERE o.user_id = ? ORDER BY o.id DESC`).all(userId)
-    : db().prepare(`${ORDER_SELECT} ORDER BY o.id DESC`).all();
-  return rows as unknown as Order[];
+const ORDER_SELECT = '*, users(first_name, last_name, email)';
+
+export async function listOrders(userId?: number): Promise<Order[]> {
+  let q = db().from('orders').select(ORDER_SELECT);
+  if (userId !== undefined) q = q.eq('user_id', userId);
+  return list(await q.order('id', { ascending: false })).map(toOrder);
 }
 
-export function getOrder(id: number): { order: Order; items: OrderItem[] } | null {
-  const o = db().prepare(`${ORDER_SELECT} WHERE o.id = ?`).get(id);
+export async function getOrder(id: number): Promise<{ order: Order; items: OrderItem[] } | null> {
+  const o = ok(await db().from('orders').select(ORDER_SELECT).eq('id', id).maybeSingle());
   if (!o) return null;
-  const items = db()
-    .prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY id')
-    .all(id)
-    .map((r) => ({
-      id: r.id as number,
-      name: r.name as string,
-      unit_cents: r.unit_cents as number,
-      quantity: r.quantity as number,
-      selections: JSON.parse(r.selections_json as string),
-      recurring: !!r.recurring,
-      free_shipping: r.free_shipping === undefined ? true : !!r.free_shipping,
-    }));
-  return { order: o as unknown as Order, items };
+  const items = list(await db().from('order_items').select('*').eq('order_id', id).order('id')).map((r) => ({
+    id: r.id as number,
+    name: r.name as string,
+    unit_cents: r.unit_cents as number,
+    quantity: r.quantity as number,
+    selections: (r.selections ?? []) as OrderItem['selections'],
+    recurring: !!r.recurring,
+    free_shipping: r.free_shipping !== false,
+  }));
+  return { order: toOrder(o), items };
 }
 
 export const ORDER_STATUSES = ['awaiting_payment', 'paid', 'completed', 'cancelled'] as const;
@@ -387,35 +397,20 @@ export const ORDER_STATUS_LABEL: Record<Order['status'], string> = {
 };
 
 /** Changing status also keeps stock right: cancelling returns items to stock, reopening takes them again. */
-export function setOrderStatus(id: number, status: Order['status']) {
-  tx(() => {
-    const row = db().prepare('SELECT status FROM orders WHERE id = ?').get(id);
-    if (!row) return;
-    const was = row.status as Order['status'];
-    if (was !== status && (was === 'cancelled' || status === 'cancelled')) {
-      const sign = status === 'cancelled' ? 1 : -1;
-      const items = db().prepare('SELECT product_id, quantity FROM order_items WHERE order_id = ?').all(id);
-      for (const it of items) {
-        db()
-          .prepare('UPDATE products SET stock = MAX(stock + ?, 0) WHERE id = ? AND stock IS NOT NULL')
-          .run(sign * (it.quantity as number), it.product_id);
-      }
-    }
-    db().prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, id);
-  });
+export async function setOrderStatus(id: number, status: Order['status']) {
+  ok(await db().rpc('set_order_status', { p_id: id, p_status: status }));
 }
 
 // ---------- Members ----------
 
-export function listUsers(status?: string): User[] {
-  const rows = status
-    ? db().prepare('SELECT id, email, first_name, last_name, phone, dojo, rank, role, status, created_at FROM users WHERE status = ? ORDER BY id DESC').all(status)
-    : db().prepare('SELECT id, email, first_name, last_name, phone, dojo, rank, role, status, created_at FROM users ORDER BY id DESC').all();
-  return rows as unknown as User[];
+export async function listUsers(status?: string): Promise<User[]> {
+  let q = db().from('users').select(USER_COLS);
+  if (status) q = q.eq('status', status);
+  return list(await q.order('id', { ascending: false })).map(toUser);
 }
 
-export function setUserStatus(id: number, status: User['status']) {
-  db().prepare('UPDATE users SET status = ? WHERE id = ?').run(status, id);
+export async function setUserStatus(id: number, status: User['status']) {
+  ok(await db().from('users').update({ status }).eq('id', id));
 }
 
 // ---------- Dojo applications ----------
@@ -441,44 +436,96 @@ function toApplication(r: Row): DojoApplication {
     dojo_name: r.dojo_name as string,
     chief_instructor: r.chief_instructor as string,
     status: r.status as DojoApplication['status'],
-    data: JSON.parse(r.data_json as string),
+    data: (r.data ?? {}) as Record<string, string>,
     signature: r.signature as string,
     admin_note: r.admin_note as string,
-    created_at: r.created_at as string,
-    reviewed_at: (r.reviewed_at as string) ?? null,
-    applicant_email: r.applicant_email as string | undefined,
+    created_at: ts(r.created_at as string),
+    reviewed_at: r.reviewed_at ? ts(r.reviewed_at as string) : null,
+    applicant_email: (r.users as { email: string } | null)?.email,
   };
 }
 
-export function createApplication(userId: number, data: Record<string, string>, signature: string) {
-  const r = db()
-    .prepare('INSERT INTO dojo_applications (user_id, dojo_name, chief_instructor, data_json, signature) VALUES (?, ?, ?, ?, ?)')
-    .run(userId, data.dojo_name, data.chief_instructor, JSON.stringify(data), signature);
-  return Number(r.lastInsertRowid);
+export async function createApplication(userId: number, data: Record<string, string>, signature: string) {
+  return one(
+    await db()
+      .from('dojo_applications')
+      .insert({ user_id: userId, dojo_name: data.dojo_name, chief_instructor: data.chief_instructor, data, signature })
+      .select('id')
+      .single(),
+  ).id as number;
 }
 
-const APP_SELECT = `SELECT a.*, u.email AS applicant_email FROM dojo_applications a JOIN users u ON u.id = a.user_id`;
+const APP_SELECT = '*, users(email)';
 
-export function listApplications(userId?: number): DojoApplication[] {
-  const rows = userId
-    ? db().prepare(`${APP_SELECT} WHERE a.user_id = ? ORDER BY a.id DESC`).all(userId)
-    : db().prepare(`${APP_SELECT} ORDER BY (a.status = 'pending') DESC, a.id DESC`).all();
-  return rows.map(toApplication);
+export async function listApplications(userId?: number): Promise<DojoApplication[]> {
+  let q = db().from('dojo_applications').select(APP_SELECT);
+  if (userId !== undefined) q = q.eq('user_id', userId);
+  const apps = list(await q.order('id', { ascending: false })).map(toApplication);
+  // Pending first when listing everything for the admin.
+  return userId === undefined ? apps.sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending')) : apps;
 }
 
-export function getApplication(id: number): DojoApplication | null {
-  const r = db().prepare(`${APP_SELECT} WHERE a.id = ?`).get(id);
+export async function getApplication(id: number): Promise<DojoApplication | null> {
+  const r = ok(await db().from('dojo_applications').select(APP_SELECT).eq('id', id).maybeSingle());
   return r ? toApplication(r) : null;
 }
 
-export function reviewApplication(id: number, status: 'approved' | 'rejected', note: string) {
-  db()
-    .prepare("UPDATE dojo_applications SET status = ?, admin_note = ?, reviewed_at = datetime('now') WHERE id = ?")
-    .run(status, note, id);
-  if (status === 'approved') {
+export async function reviewApplication(id: number, status: 'approved' | 'rejected', note: string) {
+  const app = ok(
+    await db()
+      .from('dojo_applications')
+      .update({ status, admin_note: note, reviewed_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('user_id')
+      .maybeSingle(),
+  );
+  if (status === 'approved' && app) {
     // Approving a dojo also approves the applicant's member account.
-    db()
-      .prepare("UPDATE users SET status = 'approved' WHERE status = 'pending' AND id = (SELECT user_id FROM dojo_applications WHERE id = ?)")
-      .run(id);
+    ok(await db().from('users').update({ status: 'approved' }).eq('id', app.user_id).eq('status', 'pending'));
   }
+}
+
+// ---------- Admin overview ----------
+
+export async function adminCounts() {
+  const head = (table: string) => db().from(table).select('*', { count: 'exact', head: true });
+  const n = (r: { count: number | null; error: { message: string } | null }) => {
+    if (r.error) throw new Error(r.error.message);
+    return r.count ?? 0;
+  };
+  const [pendingUsers, pendingApps, openOrders, lowStock] = await Promise.all([
+    head('users').eq('status', 'pending'),
+    head('dojo_applications').eq('status', 'pending'),
+    head('orders').eq('status', 'awaiting_payment'),
+    head('products').eq('active', true).not('stock', 'is', null).lte('stock', 5),
+  ]);
+  return { pendingUsers: n(pendingUsers), pendingApps: n(pendingApps), openOrders: n(openOrders), lowStock: n(lowStock) };
+}
+
+export async function slugTaken(slug: string, exceptId: number | null): Promise<boolean> {
+  const r = ok(await db().from('products').select('id').eq('slug', slug).maybeSingle());
+  return !!r && r.id !== exceptId;
+}
+
+export async function setProductActive(id: number, active: boolean) {
+  ok(await db().from('products').update({ active }).eq('id', id));
+}
+
+export async function isAdminUser(id: number): Promise<boolean> {
+  const r = ok(await db().from('users').select('role').eq('id', id).maybeSingle());
+  return r?.role === 'admin';
+}
+
+export async function getPasswordHash(id: number): Promise<string | null> {
+  const r = ok(await db().from('users').select('password_hash').eq('id', id).maybeSingle());
+  return r ? (r.password_hash as string) : null;
+}
+
+export async function setPasswordHash(id: number, password_hash: string) {
+  ok(await db().from('users').update({ password_hash }).eq('id', id));
+}
+
+export async function findLoginUser(email: string): Promise<{ id: number; password_hash: string } | null> {
+  const r = ok(await db().from('users').select('id, password_hash').eq('email', email).maybeSingle());
+  return r ? { id: r.id as number, password_hash: r.password_hash as string } : null;
 }

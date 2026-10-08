@@ -3,8 +3,8 @@ import { listOrders, ORDER_STATUS_LABEL } from '@/lib/shop';
 import { formatCents } from '@/lib/money';
 import { Badge, Card } from '@/components/shop/ui';
 
-export default function AdminOrders() {
-  const orders = listOrders();
+export default async function AdminOrders() {
+  const orders = await listOrders();
   return (
     <>
       <h1 className="text-3xl font-extrabold text-gray-900 mb-6">Orders</h1>

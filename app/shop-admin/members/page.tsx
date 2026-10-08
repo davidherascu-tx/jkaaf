@@ -6,7 +6,7 @@ import { Badge, Card } from '@/components/shop/ui';
 export default async function AdminMembers() {
   const me = await getUser();
   // Pending first, then everyone else.
-  const users = listUsers().sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending'));
+  const users = (await listUsers()).sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending'));
   return (
     <>
       <h1 className="text-3xl font-extrabold text-gray-900 mb-6">Members</h1>

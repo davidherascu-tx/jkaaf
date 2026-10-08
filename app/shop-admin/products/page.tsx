@@ -4,8 +4,8 @@ import { isOnSale, listProducts } from '@/lib/shop';
 import { formatCents } from '@/lib/money';
 import { Badge, Card, primaryBtn } from '@/components/shop/ui';
 
-export default function AdminProducts() {
-  const products = listProducts(true);
+export default async function AdminProducts() {
+  const products = await listProducts(true);
   return (
     <>
       <div className="flex items-center justify-between mb-6">

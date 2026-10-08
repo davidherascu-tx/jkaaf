@@ -7,7 +7,7 @@ import { Badge, Card, inputClass, primaryBtn, secondaryBtn } from '@/components/
 
 export default async function AdminApplication({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const app = /^\d+$/.test(id) ? getApplication(Number(id)) : null;
+  const app = /^\d+$/.test(id) ? await getApplication(Number(id)) : null;
   if (!app) notFound();
 
   const typedSig = app.signature.startsWith('typed:') ? app.signature.slice(6) : null;

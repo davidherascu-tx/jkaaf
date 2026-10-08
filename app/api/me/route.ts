@@ -7,7 +7,7 @@ import { cartCount } from '@/lib/shop';
 export async function GET() {
   const [user, owner] = await Promise.all([getUser(), getCartOwner()]);
   return NextResponse.json(
-    { name: user?.first_name ?? null, status: user?.status ?? null, cart: owner ? cartCount(owner) : 0 },
+    { name: user?.first_name ?? null, status: user?.status ?? null, cart: owner ? await cartCount(owner) : 0 },
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }

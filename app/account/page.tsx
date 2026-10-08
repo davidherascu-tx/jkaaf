@@ -3,6 +3,7 @@ import { logoutAction } from '@/app/account/actions';
 import { requireUser } from '@/lib/auth';
 import { listApplications, listOrders, ORDER_STATUS_LABEL } from '@/lib/shop';
 import { formatCents } from '@/lib/money';
+import { ChangePasswordForm } from '@/components/shop/AuthForms';
 import { Badge, Card, Notice, PageShell, primaryBtn, secondaryBtn } from '@/components/shop/ui';
 
 export const metadata = { title: 'My account | JKA/AF' };
@@ -10,8 +11,8 @@ export const metadata = { title: 'My account | JKA/AF' };
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ applied?: string }> }) {
   const { applied } = await searchParams;
   const user = await requireUser('/account');
-  const orders = listOrders(user.id).slice(0, 5);
-  const apps = listApplications(user.id);
+  const orders = (await listOrders(user.id)).slice(0, 5);
+  const apps = await listApplications(user.id);
 
   return (
     <PageShell
@@ -104,6 +105,11 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               ))}
             </ul>
           )}
+        </Card>
+
+        <Card>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Change password</h2>
+          <ChangePasswordForm />
         </Card>
       </div>
     </PageShell>

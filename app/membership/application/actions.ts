@@ -33,7 +33,7 @@ export async function submitApplicationAction(
     if (!account) return { error: 'Please enter your account details.' };
     const res = await createAccount({ ...account, dojo: values.dojo_name, phone: values.ci_phone, rank: values.ci_jka_rank });
     if ('error' in res) return { error: res.error };
-    user = getUserById(res.id);
+    user = await getUserById(res.id);
     if (!user) return { error: 'Could not create your account. Please try again.' };
   }
 
@@ -42,6 +42,6 @@ export async function submitApplicationAction(
   for (const f of ALL_FIELDS) if (isVisible(f, values)) clean[f.name] = (values[f.name] ?? '').trim();
   for (const c of ALL_CLAUSES) clean[c.name] = 'yes';
 
-  createApplication(user.id, clean, signature);
+  await createApplication(user.id, clean, signature);
   redirect('/account?applied=1');
 }

@@ -8,7 +8,7 @@ export const metadata = { title: 'My orders | JKA/AF' };
 
 export default async function OrdersPage() {
   const user = await requireUser('/shop/orders');
-  const orders = listOrders(user.id);
+  const orders = await listOrders(user.id);
   return (
     <PageShell title="My orders">
       {orders.length === 0 ? (

@@ -11,7 +11,7 @@ export const metadata = { title: 'Checkout | JKA/AF' };
 export default async function CheckoutPage() {
   const user = await getUser();
   const owner = await getCartOwner();
-  const cart = owner ? getCart(owner) : [];
+  const cart = owner ? await getCart(owner) : [];
   if (cart.length === 0 || cart.some((l) => 'error' in l.priced)) redirect('/shop/cart');
   const total = cart.reduce((s, l) => s + ('error' in l.priced ? 0 : l.priced.unitCents * l.quantity), 0);
 

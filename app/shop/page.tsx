@@ -10,8 +10,8 @@ export const metadata = { title: 'Shop | JKA/AF' };
 
 export default async function ShopPage() {
   const user = await getUser();
-  const clubs = user ? approvedClubNames(user.id) : [];
-  const products = listProducts();
+  const clubs = user ? await approvedClubNames(user.id) : [];
+  const products = await listProducts();
   return (
     <PageShell
       wide

@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useActionState } from 'react';
-import { loginAction, registerAction, type FormState } from '@/app/account/actions';
-import { Card, ErrorBox, Field, inputClass, primaryBtn } from '@/components/shop/ui';
+import { changePasswordAction, loginAction, registerAction, type FormState, type PasswordState } from '@/app/account/actions';
+import { Card, ErrorBox, Field, inputClass, Notice, primaryBtn } from '@/components/shop/ui';
 
 const initial: FormState = {};
 
@@ -81,5 +81,27 @@ export function RegisterForm() {
         </p>
       </form>
     </Card>
+  );
+}
+
+export function ChangePasswordForm() {
+  const [state, action, pending] = useActionState<PasswordState, FormData>(changePasswordAction, {});
+  return (
+    <form action={action} className="space-y-4 max-w-md" key={state.done ? 'done' : 'form'}>
+      {state.error && <ErrorBox>{state.error}</ErrorBox>}
+      {state.done && <Notice tone="ok">Your password was changed. Other devices have been signed out.</Notice>}
+      <Field label="Current password" required>
+        <input name="current" type="password" autoComplete="current-password" required className={inputClass} />
+      </Field>
+      <Field label="New password" required hint="At least 8 characters.">
+        <input name="next_password" type="password" autoComplete="new-password" minLength={8} required className={inputClass} />
+      </Field>
+      <Field label="Confirm new password" required>
+        <input name="confirm" type="password" autoComplete="new-password" minLength={8} required className={inputClass} />
+      </Field>
+      <button type="submit" disabled={pending} className={primaryBtn}>
+        {pending ? 'Saving…' : 'Change password'}
+      </button>
+    </form>
   );
 }

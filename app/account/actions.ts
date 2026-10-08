@@ -1,10 +1,10 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { db } from '@/lib/db';
-import { verifyPassword } from '@/lib/password';
-import { createSession, destroySession, safeNext } from '@/lib/auth';
+import { hashPassword, verifyPassword } from '@/lib/password';
+import { createSession, destroySession, replaceAllSessions, requireUser, safeNext } from '@/lib/auth';
 import { createAccount } from '@/lib/accounts';
+import { findLoginUser, getPasswordHash, setPasswordHash } from '@/lib/shop';
 import { adoptGuestCart } from '@/lib/cart';
 
 export interface FormState {
@@ -31,15 +31,37 @@ export async function registerAction(_prev: FormState, fd: FormData): Promise<Fo
 export async function loginAction(_prev: FormState, fd: FormData): Promise<FormState> {
   const email = str(fd, 'email').toLowerCase();
   const password = String(fd.get('password') ?? '');
-  const row = db().prepare('SELECT id, password_hash FROM users WHERE email = ?').get(email);
+  const row = await findLoginUser(email);
 
   // Same message for unknown email and wrong password.
-  if (!row || !verifyPassword(password, row.password_hash as string)) {
+  if (!row || !verifyPassword(password, row.password_hash)) {
     return { error: 'Incorrect email or password.' };
   }
-  await createSession(row.id as number);
-  await adoptGuestCart(row.id as number);
+  await createSession(row.id);
+  await adoptGuestCart(row.id);
   redirect(safeNext(fd.get('next')));
+}
+
+export interface PasswordState {
+  error?: string;
+  done?: boolean;
+}
+
+export async function changePasswordAction(_prev: PasswordState, fd: FormData): Promise<PasswordState> {
+  const user = await requireUser('/account');
+  const current = String(fd.get('current') ?? '');
+  const next = String(fd.get('next_password') ?? '');
+  const confirm = String(fd.get('confirm') ?? '');
+
+  const hash = await getPasswordHash(user.id);
+  if (!hash || !verifyPassword(current, hash)) return { error: 'Your current password is incorrect.' };
+  if (next.length < 8) return { error: 'The new password must be at least 8 characters.' };
+  if (next !== confirm) return { error: 'The new passwords do not match.' };
+  if (next === current) return { error: 'Choose a password different from your current one.' };
+
+  await setPasswordHash(user.id, hashPassword(next));
+  await replaceAllSessions(user.id);
+  return { done: true };
 }
 
 export async function logoutAction() {

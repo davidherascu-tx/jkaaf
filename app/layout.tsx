@@ -1,4 +1,5 @@
 import './globals.css';
+import Script from 'next/script';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -28,10 +29,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={jakarta.variable} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: designScript }} />
-      </head>
       <body className="bg-gray-50 text-gray-900 min-h-screen flex flex-col" suppressHydrationWarning>
+        <Script id="design-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: designScript }} />
         <DesignVariant modern={<Navbar />} classic={<ClassicNavbar />} />
         <main className="flex-grow flex flex-col">{children}</main>
         <DesignVariant modern={<Footer />} classic={<ClassicFooter />} />

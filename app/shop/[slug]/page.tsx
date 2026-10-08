@@ -9,11 +9,11 @@ import { Card, Notice, PageShell } from '@/components/shop/ui';
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product || !product.active) notFound();
 
   const user = await getUser();
-  const clubs = user ? approvedClubNames(user.id) : [];
+  const clubs = user ? await approvedClubNames(user.id) : [];
   const needsApplication = product.requires_dojo_approval && clubs.length === 0;
 
   return (

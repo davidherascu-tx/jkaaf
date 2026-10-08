@@ -4,7 +4,7 @@ import ProductForm from '@/components/shop/ProductForm';
 
 export default async function EditProduct({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const product = /^\d+$/.test(id) ? getProductById(Number(id)) : null;
+  const product = /^\d+$/.test(id) ? await getProductById(Number(id)) : null;
   if (!product) notFound();
   return (
     <>

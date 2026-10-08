@@ -1,17 +1,12 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { adminCounts } from '@/lib/shop';
 
 export const metadata = { title: 'Shop admin | JKA/AF', robots: { index: false } };
 
-const count = (sql: string) => Number((db().prepare(sql).get() as { n: number }).n);
-
 export default async function ShopAdminLayout({ children }: { children: React.ReactNode }) {
   await requireAdmin();
-  const pendingUsers = count("SELECT COUNT(*) AS n FROM users WHERE status = 'pending'");
-  const pendingApps = count("SELECT COUNT(*) AS n FROM dojo_applications WHERE status = 'pending'");
-  const lowStock = count('SELECT COUNT(*) AS n FROM products WHERE active = 1 AND stock IS NOT NULL AND stock <= 5');
-  const openOrders = count("SELECT COUNT(*) AS n FROM orders WHERE status = 'awaiting_payment'");
+  const { pendingUsers, pendingApps, openOrders, lowStock } = await adminCounts();
 
   const tabs = [
     { href: '/shop-admin', label: 'Overview' },

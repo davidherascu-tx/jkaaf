@@ -16,7 +16,7 @@ export default async function OrderPage({
   const { id } = await params;
   const { placed } = await searchParams;
   const user = await requireUser(`/shop/orders/${id}`);
-  const found = /^\d+$/.test(id) ? getOrder(Number(id)) : null;
+  const found = /^\d+$/.test(id) ? await getOrder(Number(id)) : null;
   // Customers can only see their own orders; admins can see all.
   if (!found || (found.order.user_id !== user.id && user.role !== 'admin')) notFound();
   const { order, items } = found;

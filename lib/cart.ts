@@ -34,6 +34,6 @@ export async function adoptGuestCart(userId: number) {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
   if (!token) return;
-  mergeGuestCart(token, userId);
+  await mergeGuestCart(token, userId);
   store.delete(COOKIE);
 }
