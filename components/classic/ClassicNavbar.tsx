@@ -2,13 +2,29 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import NavAccount from '@/components/shop/NavAccount';
+import { useMe } from '@/components/shop/useMe';
 import { usePathname } from 'next/navigation';
 
 export default function ClassicNavbar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [aboutOpen, setAboutOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const me = useMe();
+  const shopMenu = [
+    { name: 'Browse shop', path: '/shop' },
+    { name: me && me.cart > 0 ? `Cart (${me.cart})` : 'Cart', path: '/shop/cart' },
+    ...(me?.name
+      ? [
+          { name: 'My orders', path: '/shop/orders' },
+          { name: 'My account', path: '/account' },
+        ]
+      : [
+          { name: 'Sign in', path: '/account/login' },
+          { name: 'Create account', path: '/account/register' },
+        ]),
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -18,7 +34,7 @@ export default function ClassicNavbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks = [
+  const navLinks: { name: string; path: string; external?: boolean; dropdown?: { name: string; path: string }[] }[] = [
     { 
       name: 'About JKA/AF', 
       path: '#',
@@ -35,7 +51,7 @@ export default function ClassicNavbar() {
     { name: 'Dojos', path: '/dojos' },
     { name: 'News', path: '/news' },
     { name: 'Contact', path: '/contact' },
-    { name: 'Shop', path: 'https://your-shop-link.com', external: true },
+    { name: 'Shop', path: '/shop', dropdown: shopMenu },
   ];
 
   useEffect(() => {
@@ -79,7 +95,7 @@ export default function ClassicNavbar() {
             </div>
           </Link>
 
-          <div className="hidden lg:flex items-center space-x-1 xl:space-x-4">
+          <div className="hidden xl:flex items-center space-x-1">
             {navLinks.map((link) => (
               <div key={link.name} className="relative group">
                 
@@ -131,6 +147,7 @@ export default function ClassicNavbar() {
               </div>
             ))}
             
+            <NavAccount variant="desktop" />
             <div className="pl-3 ml-2 border-l border-gray-200">
               <Link 
                 href="/membership"
@@ -141,9 +158,10 @@ export default function ClassicNavbar() {
             </div>
           </div>
 
+          <div className="xl:hidden ml-auto mr-1"><NavAccount variant="bar" /></div>
           <button 
             onClick={() => setIsOpen(!isOpen)}
-            className="lg:hidden p-2 text-gray-600 hover:text-red-600 focus:outline-none transition-colors"
+            className="xl:hidden p-2 text-gray-600 hover:text-red-600 focus:outline-none transition-colors"
             aria-label="Toggle menu"
           >
             <div className="w-6 h-5 flex flex-col justify-between relative">
@@ -157,7 +175,7 @@ export default function ClassicNavbar() {
       </nav>
 
       <div 
-        className={`absolute top-[110%] left-0 right-0 px-4 sm:px-6 pointer-events-auto transition-all duration-400 ease-in-out lg:hidden origin-top ${
+        className={`absolute top-[110%] left-0 right-0 px-4 sm:px-6 pointer-events-auto transition-all duration-400 ease-in-out xl:hidden origin-top ${
           isOpen ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-0 pointer-events-none'
         }`}
       >
@@ -168,11 +186,11 @@ export default function ClassicNavbar() {
                 
                 {link.path === '#' ? (
                   <button 
-                    onClick={() => setAboutOpen(!aboutOpen)}
+                    onClick={() => setOpenMenu(openMenu === link.name ? null : link.name)}
                     className="flex-1 px-6 py-4 flex items-center justify-between text-base font-semibold text-gray-800 hover:text-red-600 transition-colors focus:outline-none"
                   >
                     <span>{link.name}</span>
-                    <svg className={`w-5 h-5 text-gray-400 transition-transform ${aboutOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    <svg className={`w-5 h-5 text-gray-400 transition-transform ${openMenu === link.name ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                   </button>
                 ) : (
                   <>
@@ -191,8 +209,8 @@ export default function ClassicNavbar() {
                       )}
                     </Link>
                     {link.dropdown && (
-                      <button onClick={() => setAboutOpen(!aboutOpen)} className="p-4 mr-2 text-gray-500 hover:text-red-600 focus:outline-none">
-                        <svg className={`w-5 h-5 transition-transform ${aboutOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                      <button onClick={() => setOpenMenu(openMenu === link.name ? null : link.name)} className="p-4 mr-2 text-gray-500 hover:text-red-600 focus:outline-none">
+                        <svg className={`w-5 h-5 transition-transform ${openMenu === link.name ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                       </button>
                     )}
                   </>
@@ -200,7 +218,7 @@ export default function ClassicNavbar() {
 
               </div>
               
-              {link.dropdown && aboutOpen && (
+              {link.dropdown && openMenu === link.name && (
                 <div className="bg-gray-50 flex flex-col py-2 px-6 border-t border-gray-100 border-b border-gray-100">
                   {link.dropdown.map((sublink) => (
                     <Link 
@@ -216,7 +234,6 @@ export default function ClassicNavbar() {
               )}
             </div>
           ))}
-          
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 mt-2">
             <Link 
               href="/membership"

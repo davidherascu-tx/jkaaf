@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function MembershipPage() {
   return (
@@ -48,17 +49,12 @@ export default function MembershipPage() {
 
             {/* Call to Action Button */}
             <div>
-              <a 
-                href="https://docs.google.com/forms/d/e/1FAIpQLSdky3Ci5oven9q88pHhR5AEIOSjvlXEce01asNtmyADOT0-oA/viewform"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/membership/application"
                 className="inline-flex items-center justify-center gap-2 bg-red-600 text-white font-bold text-lg px-8 py-4 rounded-xl hover:bg-red-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 w-full sm:w-auto"
               >
                 JKA/AF Membership Application
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                </svg>
-              </a>
+              </Link>
             </div>
 
           </div>
