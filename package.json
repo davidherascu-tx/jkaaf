@@ -7,15 +7,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "db:migrate": "node --env-file=.env.local scripts/migrate.mjs",
     "db:admin": "node --env-file=.env.local scripts/create-admin.mjs"
   },
   "dependencies": {
     "@portabletext/react": "^6.0.3",
     "@sanity/image-url": "^1.2.0",
     "@sanity/vision": "^4.22.0",
-    "@supabase/supabase-js": "^2.117.3",
     "next": "16.2.0",
     "next-sanity": "^11.6.12",
+    "pg": "^8.23.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sanity": "^4.22.0",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24.19.1",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

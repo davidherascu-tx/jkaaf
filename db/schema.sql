@@ -1,5 +1,5 @@
--- JKA/AF shop schema for Supabase (Postgres).
--- Run this once in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
+-- JKA/AF shop schema (Neon / Postgres).
+-- Apply with:  npm run db:migrate
 -- Safe to re-run: everything uses IF NOT EXISTS / OR REPLACE.
 
 -- ───────────────────────── Tables ─────────────────────────
@@ -99,18 +99,6 @@ create table if not exists dojo_applications (
   reviewed_at timestamptz
 );
 create index if not exists dojo_applications_user_idx on dojo_applications (user_id);
-
--- ───────────────────────── Security ─────────────────────────
--- The website talks to the database only from the server with the service-role key.
--- Row Level Security is ON with no policies, so the public (anon) key can read nothing.
-
-alter table users enable row level security;
-alter table sessions enable row level security;
-alter table products enable row level security;
-alter table cart_items enable row level security;
-alter table orders enable row level security;
-alter table order_items enable row level security;
-alter table dojo_applications enable row level security;
 
 -- ───────────────────────── Functions (atomic operations) ─────────────────────────
 
@@ -214,10 +202,6 @@ begin
 end;
 $$;
 
--- Only the server (service role) may call these.
-revoke all on function place_order(bigint, integer, text, text, text, text, text, text, jsonb) from public, anon, authenticated;
-revoke all on function set_order_status(bigint, text) from public, anon, authenticated;
-revoke all on function merge_guest_cart(text, bigint) from public, anon, authenticated;
 
 -- ───────────────────────── Starter products ─────────────────────────
 -- Only inserted when the table is empty. Edit them later in the shop admin.

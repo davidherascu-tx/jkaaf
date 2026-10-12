@@ -1,5 +1,5 @@
 import 'server-only';
-import { db, ok, one, type DbRow, rows as list, ts } from '@/lib/db';
+import { query, queryOne, type DbRow, ts } from '@/lib/db';
 import { toUser, USER_COLS, type User } from '@/lib/auth';
 import { currentPriceCents, type Product, type ProductInput } from '@/lib/products';
 
@@ -32,60 +32,71 @@ function toProduct(r: Row): Product {
 }
 
 export async function listProducts(includeInactive = false): Promise<Product[]> {
-  let q = db().from('products').select('*');
-  if (!includeInactive) q = q.eq('active', true);
-  return list(await q.order('sort').order('id')).map(toProduct);
+  const where = includeInactive ? '' : 'where active';
+  return (await query(`select * from products ${where} order by sort, id`)).map(toProduct);
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const r = ok(await db().from('products').select('*').eq('slug', slug).maybeSingle());
+  const r = await queryOne('select * from products where slug = $1', [slug]);
   return r ? toProduct(r) : null;
 }
 
 export async function getProductById(id: number): Promise<Product | null> {
-  const r = ok(await db().from('products').select('*').eq('id', id).maybeSingle());
+  const r = await queryOne('select * from products where id = $1', [id]);
   return r ? toProduct(r) : null;
 }
 
 export async function saveProduct(id: number | null, p: ProductInput): Promise<number> {
-  const row = {
-    name: p.name,
-    slug: p.slug,
-    description: p.description,
-    price_cents: p.price_cents,
-    price_note: p.price_note,
-    image_url: p.image_url,
-    sale_price_cents: p.sale_price_cents,
-    sale_ends_on: p.sale_ends_on,
-    stock: p.stock,
-    free_shipping: p.free_shipping,
-    options: p.options,
-    physical: p.physical,
-    requires_dojo_approval: p.requires_dojo_approval,
-    active: p.active,
-    sort: p.sort,
-  };
+  // jsonb values are passed as JSON text (pg would turn a JS array into a Postgres array).
+  const values = [
+    p.name,
+    p.slug,
+    p.description,
+    p.price_cents,
+    p.price_note,
+    p.image_url,
+    p.sale_price_cents,
+    p.sale_ends_on,
+    p.stock,
+    p.free_shipping,
+    JSON.stringify(p.options),
+    p.physical,
+    p.requires_dojo_approval,
+    p.active,
+    p.sort,
+  ];
   if (id === null) {
-    return one(await db().from('products').insert(row).select('id').single()).id as number;
+    const r = await queryOne(
+      `insert into products (name, slug, description, price_cents, price_note, image_url, sale_price_cents, sale_ends_on,
+         stock, free_shipping, options, physical, requires_dojo_approval, active, sort)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15) returning id`,
+      values,
+    );
+    return r!.id as number;
   }
-  ok(await db().from('products').update(row).eq('id', id));
+  await query(
+    `update products set name = $1, slug = $2, description = $3, price_cents = $4, price_note = $5, image_url = $6,
+       sale_price_cents = $7, sale_ends_on = $8, stock = $9, free_shipping = $10, options = $11::jsonb, physical = $12,
+       requires_dojo_approval = $13, active = $14, sort = $15
+     where id = $16`,
+    [...values, id],
+  );
   return id;
 }
 
 export async function deleteProduct(id: number) {
-  const used = await db().from('order_items').select('*', { count: 'exact', head: true }).eq('product_id', id);
-  if (used.error) throw new Error(used.error.message);
-  if ((used.count ?? 0) > 0) {
+  const used = await queryOne('select count(*) as n from order_items where product_id = $1', [id]);
+  if ((used?.n as number) > 0) {
     // Keep order history intact: hide instead of delete.
-    ok(await db().from('products').update({ active: false }).eq('id', id));
+    await query('update products set active = false where id = $1', [id]);
     return 'archived' as const;
   }
-  ok(await db().from('products').delete().eq('id', id));
+  await query('delete from products where id = $1', [id]);
   return 'deleted' as const;
 }
 
 export async function setStock(id: number, stock: number | null) {
-  ok(await db().from('products').update({ stock }).eq('id', id));
+  await query('update products set stock = $1 where id = $2', [stock, id]);
 }
 
 export const isSoldOut = (p: Product) => p.stock !== null && p.stock <= 0;
@@ -138,13 +149,9 @@ export function priceItem(
 }
 
 export async function approvedClubNames(userId: number): Promise<string[]> {
-  const rows = list(
-    await db()
-      .from('dojo_applications')
-      .select('dojo_name')
-      .eq('user_id', userId)
-      .eq('status', 'approved')
-      .order('dojo_name'),
+  const rows = await query(
+    "select dojo_name from dojo_applications where user_id = $1 and status = 'approved' order by dojo_name",
+    [userId],
   );
   return rows.map((r) => r.dojo_name as string);
 }
@@ -154,10 +161,9 @@ export async function approvedClubNames(userId: number): Promise<string[]> {
 /** A cart belongs to a signed-in user or, for guests, to a cookie token. */
 export type CartOwner = { userId: number; token?: undefined } | { userId?: undefined; token: string };
 
-/** Restricts a query to this owner's cart rows. */
-function forOwner<T>(q: T, o: CartOwner): T {
-  const f = q as unknown as { eq(column: string, value: string | number): T };
-  return o.userId !== undefined ? f.eq('user_id', o.userId) : f.eq('cart_token', o.token);
+/** SQL condition (and its parameter) restricting a query to this owner's cart rows; the parameter is $`n`. */
+function ownerCond(o: CartOwner, n: number): [string, string | number] {
+  return o.userId !== undefined ? [`user_id = $${n}`, o.userId] : [`cart_token = $${n}`, o.token];
 }
 
 export interface CartLine {
@@ -180,11 +186,14 @@ const canonical = (s: Selections) => JSON.stringify(Object.keys(s).sort().map((k
 
 export async function getCart(owner: CartOwner): Promise<CartLine[]> {
   const clubs = owner.userId !== undefined ? await approvedClubNames(owner.userId) : [];
-  const rows = list(await forOwner(db().from('cart_items').select('*'), owner).order('id'));
+  const [cond, param] = ownerCond(owner, 1);
+  const rows = await query(`select * from cart_items where ${cond} order by id`, [param]);
   if (rows.length === 0) return [];
 
   const ids = [...new Set(rows.map((r) => r.product_id as number))];
-  const products = new Map(list(await db().from('products').select('*').in('id', ids)).map((r) => [r.id as number, toProduct(r)]));
+  const products = new Map(
+    (await query('select * from products where id = any($1::bigint[])', [ids])).map((r) => [r.id as number, toProduct(r)]),
+  );
 
   // Total units per product across all lines, for the stock check.
   const perProduct = new Map<number, number>();
@@ -194,7 +203,7 @@ export async function getCart(owner: CartOwner): Promise<CartLine[]> {
   for (const r of rows) {
     const product = products.get(r.product_id as number);
     if (!product || !product.active) {
-      ok(await db().from('cart_items').delete().eq('id', r.id));
+      await query('delete from cart_items where id = $1', [r.id]);
       continue;
     }
     const selections = (r.selections ?? {}) as Selections;
@@ -211,7 +220,8 @@ export async function getCart(owner: CartOwner): Promise<CartLine[]> {
 }
 
 export async function cartCount(owner: CartOwner): Promise<number> {
-  const rows = list(await forOwner(db().from('cart_items').select('quantity'), owner));
+  const [cond, param] = ownerCond(owner, 1);
+  const rows = await query(`select quantity from cart_items where ${cond}`, [param]);
   return rows.reduce((s, r) => s + (r.quantity as number), 0);
 }
 
@@ -225,44 +235,39 @@ export async function addToCart(
   const priced = priceItem(product, selections, clubs);
   if ('error' in priced) return priced.error;
 
-  const sameProduct = list(await forOwner(db().from('cart_items').select('id, quantity, selections'), owner).eq('product_id', product.id));
+  const [cond, param] = ownerCond(owner, 1);
+  const sameProduct = await query(`select id, quantity, selections from cart_items where ${cond} and product_id = $2`, [param, product.id]);
   const inCart = sameProduct.reduce((s, r) => s + (r.quantity as number), 0);
   const stockErr = stockProblem(product, inCart + quantity);
   if (stockErr) return stockErr;
 
   const existing = sameProduct.find((r) => canonical((r.selections ?? {}) as Selections) === canonical(selections));
   if (existing) {
-    ok(
-      await db()
-        .from('cart_items')
-        .update({ quantity: Math.min((existing.quantity as number) + quantity, 99) })
-        .eq('id', existing.id),
-    );
+    await query('update cart_items set quantity = $1 where id = $2', [Math.min((existing.quantity as number) + quantity, 99), existing.id]);
   } else {
-    ok(
-      await db().from('cart_items').insert({
-        user_id: owner.userId ?? null,
-        cart_token: owner.token ?? null,
-        product_id: product.id,
-        selections,
-        quantity,
-      }),
-    );
+    await query('insert into cart_items (user_id, cart_token, product_id, selections, quantity) values ($1, $2, $3, $4::jsonb, $5)', [
+      owner.userId ?? null,
+      owner.token ?? null,
+      product.id,
+      JSON.stringify(selections),
+      quantity,
+    ]);
   }
   return null;
 }
 
 export async function setCartQuantity(owner: CartOwner, itemId: number, quantity: number) {
+  const [cond, param] = ownerCond(owner, 2);
   if (quantity <= 0) {
-    ok(await forOwner(db().from('cart_items').delete().eq('id', itemId), owner));
+    await query(`delete from cart_items where id = $1 and ${cond}`, [itemId, param]);
   } else {
-    ok(await forOwner(db().from('cart_items').update({ quantity: Math.min(quantity, 99) }).eq('id', itemId), owner));
+    await query(`update cart_items set quantity = $3 where id = $1 and ${cond}`, [itemId, param, Math.min(quantity, 99)]);
   }
 }
 
 /** Move a guest cart into a user's cart (called after sign in / sign up). */
 export async function mergeGuestCart(token: string, userId: number) {
-  ok(await db().rpc('merge_guest_cart', { p_token: token, p_user_id: userId }));
+  await query('select merge_guest_cart($1, $2)', [token, userId]);
 }
 
 // ---------- Orders ----------
@@ -319,34 +324,38 @@ export async function placeOrder(
   }
 
   // One database function does stock check + order + items + empty cart atomically.
-  const res = await db().rpc('place_order', {
-    p_user_id: user.id,
-    p_total: total,
-    p_ship_name: ship.name,
-    p_ship_address: ship.address,
-    p_ship_city: ship.city,
-    p_ship_state: ship.state,
-    p_ship_zip: ship.zip,
-    p_notes: notes,
-    p_items: cart.map((l) => {
-      const p = l.priced as PricedLine;
-      return {
-        product_id: l.product.id,
-        name: l.product.name,
-        unit_cents: p.unitCents,
-        quantity: l.quantity,
-        selections: p.lines,
-        recurring: p.recurring,
-        free_shipping: l.product.free_shipping,
-      };
-    }),
+  const items = cart.map((l) => {
+    const p = l.priced as PricedLine;
+    return {
+      product_id: l.product.id,
+      name: l.product.name,
+      unit_cents: p.unitCents,
+      quantity: l.quantity,
+      selections: p.lines,
+      recurring: p.recurring,
+      free_shipping: l.product.free_shipping,
+    };
   });
-  if (res.error) return { error: res.error.message };
-  return { orderId: Number(res.data) };
+  try {
+    const r = await queryOne('select place_order($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb) as id', [
+      user.id,
+      total,
+      ship.name,
+      ship.address,
+      ship.city,
+      ship.state,
+      ship.zip,
+      notes,
+      JSON.stringify(items),
+    ]);
+    return { orderId: Number(r!.id) };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Could not place the order.' };
+  }
 }
 
 const toOrder = (r: Row): Order => {
-  const u = r.users as { first_name: string; last_name: string; email: string } | null;
+  const hasCustomer = r.customer_email != null;
   return {
     id: r.id as number,
     user_id: r.user_id as number,
@@ -359,24 +368,24 @@ const toOrder = (r: Row): Order => {
     ship_state: r.ship_state as string,
     ship_zip: r.ship_zip as string,
     notes: r.notes as string,
-    created_at: ts(r.created_at as string),
-    customer_name: u ? `${u.first_name} ${u.last_name}` : undefined,
-    customer_email: u?.email,
+    created_at: ts(r.created_at as Date),
+    customer_name: hasCustomer ? `${r.customer_first} ${r.customer_last}` : undefined,
+    customer_email: hasCustomer ? (r.customer_email as string) : undefined,
   };
 };
 
-const ORDER_SELECT = '*, users(first_name, last_name, email)';
+const ORDER_SELECT = `select o.*, u.first_name as customer_first, u.last_name as customer_last, u.email as customer_email
+  from orders o left join users u on u.id = o.user_id`;
 
 export async function listOrders(userId?: number): Promise<Order[]> {
-  let q = db().from('orders').select(ORDER_SELECT);
-  if (userId !== undefined) q = q.eq('user_id', userId);
-  return list(await q.order('id', { ascending: false })).map(toOrder);
+  const where = userId !== undefined ? 'where o.user_id = $1' : '';
+  return (await query(`${ORDER_SELECT} ${where} order by o.id desc`, userId !== undefined ? [userId] : [])).map(toOrder);
 }
 
 export async function getOrder(id: number): Promise<{ order: Order; items: OrderItem[] } | null> {
-  const o = ok(await db().from('orders').select(ORDER_SELECT).eq('id', id).maybeSingle());
+  const o = await queryOne(`${ORDER_SELECT} where o.id = $1`, [id]);
   if (!o) return null;
-  const items = list(await db().from('order_items').select('*').eq('order_id', id).order('id')).map((r) => ({
+  const items = (await query('select * from order_items where order_id = $1 order by id', [id])).map((r) => ({
     id: r.id as number,
     name: r.name as string,
     unit_cents: r.unit_cents as number,
@@ -398,19 +407,18 @@ export const ORDER_STATUS_LABEL: Record<Order['status'], string> = {
 
 /** Changing status also keeps stock right: cancelling returns items to stock, reopening takes them again. */
 export async function setOrderStatus(id: number, status: Order['status']) {
-  ok(await db().rpc('set_order_status', { p_id: id, p_status: status }));
+  await query('select set_order_status($1, $2)', [id, status]);
 }
 
 // ---------- Members ----------
 
 export async function listUsers(status?: string): Promise<User[]> {
-  let q = db().from('users').select(USER_COLS);
-  if (status) q = q.eq('status', status);
-  return list(await q.order('id', { ascending: false })).map(toUser);
+  const where = status ? 'where status = $1' : '';
+  return (await query(`select ${USER_COLS} from users ${where} order by id desc`, status ? [status] : [])).map(toUser);
 }
 
 export async function setUserStatus(id: number, status: User['status']) {
-  ok(await db().from('users').update({ status }).eq('id', id));
+  await query('update users set status = $1 where id = $2', [status, id]);
 }
 
 // ---------- Dojo applications ----------
@@ -439,93 +447,86 @@ function toApplication(r: Row): DojoApplication {
     data: (r.data ?? {}) as Record<string, string>,
     signature: r.signature as string,
     admin_note: r.admin_note as string,
-    created_at: ts(r.created_at as string),
-    reviewed_at: r.reviewed_at ? ts(r.reviewed_at as string) : null,
-    applicant_email: (r.users as { email: string } | null)?.email,
+    created_at: ts(r.created_at as Date),
+    reviewed_at: r.reviewed_at ? ts(r.reviewed_at as Date) : null,
+    applicant_email: (r.applicant_email as string | null) ?? undefined,
   };
 }
 
 export async function createApplication(userId: number, data: Record<string, string>, signature: string) {
-  return one(
-    await db()
-      .from('dojo_applications')
-      .insert({ user_id: userId, dojo_name: data.dojo_name, chief_instructor: data.chief_instructor, data, signature })
-      .select('id')
-      .single(),
-  ).id as number;
+  const r = await queryOne(
+    'insert into dojo_applications (user_id, dojo_name, chief_instructor, data, signature) values ($1, $2, $3, $4::jsonb, $5) returning id',
+    [userId, data.dojo_name, data.chief_instructor, JSON.stringify(data), signature],
+  );
+  return r!.id as number;
 }
 
-const APP_SELECT = '*, users(email)';
+const APP_SELECT = `select a.*, u.email as applicant_email
+  from dojo_applications a left join users u on u.id = a.user_id`;
 
 export async function listApplications(userId?: number): Promise<DojoApplication[]> {
-  let q = db().from('dojo_applications').select(APP_SELECT);
-  if (userId !== undefined) q = q.eq('user_id', userId);
-  const apps = list(await q.order('id', { ascending: false })).map(toApplication);
+  const where = userId !== undefined ? 'where a.user_id = $1' : '';
+  const apps = (await query(`${APP_SELECT} ${where} order by a.id desc`, userId !== undefined ? [userId] : [])).map(toApplication);
   // Pending first when listing everything for the admin.
   return userId === undefined ? apps.sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending')) : apps;
 }
 
 export async function getApplication(id: number): Promise<DojoApplication | null> {
-  const r = ok(await db().from('dojo_applications').select(APP_SELECT).eq('id', id).maybeSingle());
+  const r = await queryOne(`${APP_SELECT} where a.id = $1`, [id]);
   return r ? toApplication(r) : null;
 }
 
 export async function reviewApplication(id: number, status: 'approved' | 'rejected', note: string) {
-  const app = ok(
-    await db()
-      .from('dojo_applications')
-      .update({ status, admin_note: note, reviewed_at: new Date().toISOString() })
-      .eq('id', id)
-      .select('user_id')
-      .maybeSingle(),
+  const app = await queryOne(
+    'update dojo_applications set status = $1, admin_note = $2, reviewed_at = now() where id = $3 returning user_id',
+    [status, note, id],
   );
   if (status === 'approved' && app) {
     // Approving a dojo also approves the applicant's member account.
-    ok(await db().from('users').update({ status: 'approved' }).eq('id', app.user_id).eq('status', 'pending'));
+    await query("update users set status = 'approved' where id = $1 and status = 'pending'", [app.user_id]);
   }
 }
 
 // ---------- Admin overview ----------
 
 export async function adminCounts() {
-  const head = (table: string) => db().from(table).select('*', { count: 'exact', head: true });
-  const n = (r: { count: number | null; error: { message: string } | null }) => {
-    if (r.error) throw new Error(r.error.message);
-    return r.count ?? 0;
+  const r = await queryOne(`select
+    (select count(*) from users where status = 'pending') as pending_users,
+    (select count(*) from dojo_applications where status = 'pending') as pending_apps,
+    (select count(*) from orders where status = 'awaiting_payment') as open_orders,
+    (select count(*) from products where active and stock is not null and stock <= 5) as low_stock`);
+  return {
+    pendingUsers: r!.pending_users as number,
+    pendingApps: r!.pending_apps as number,
+    openOrders: r!.open_orders as number,
+    lowStock: r!.low_stock as number,
   };
-  const [pendingUsers, pendingApps, openOrders, lowStock] = await Promise.all([
-    head('users').eq('status', 'pending'),
-    head('dojo_applications').eq('status', 'pending'),
-    head('orders').eq('status', 'awaiting_payment'),
-    head('products').eq('active', true).not('stock', 'is', null).lte('stock', 5),
-  ]);
-  return { pendingUsers: n(pendingUsers), pendingApps: n(pendingApps), openOrders: n(openOrders), lowStock: n(lowStock) };
 }
 
 export async function slugTaken(slug: string, exceptId: number | null): Promise<boolean> {
-  const r = ok(await db().from('products').select('id').eq('slug', slug).maybeSingle());
+  const r = await queryOne('select id from products where slug = $1', [slug]);
   return !!r && r.id !== exceptId;
 }
 
 export async function setProductActive(id: number, active: boolean) {
-  ok(await db().from('products').update({ active }).eq('id', id));
+  await query('update products set active = $1 where id = $2', [active, id]);
 }
 
 export async function isAdminUser(id: number): Promise<boolean> {
-  const r = ok(await db().from('users').select('role').eq('id', id).maybeSingle());
+  const r = await queryOne('select role from users where id = $1', [id]);
   return r?.role === 'admin';
 }
 
 export async function getPasswordHash(id: number): Promise<string | null> {
-  const r = ok(await db().from('users').select('password_hash').eq('id', id).maybeSingle());
+  const r = await queryOne('select password_hash from users where id = $1', [id]);
   return r ? (r.password_hash as string) : null;
 }
 
 export async function setPasswordHash(id: number, password_hash: string) {
-  ok(await db().from('users').update({ password_hash }).eq('id', id));
+  await query('update users set password_hash = $1 where id = $2', [password_hash, id]);
 }
 
 export async function findLoginUser(email: string): Promise<{ id: number; password_hash: string } | null> {
-  const r = ok(await db().from('users').select('id, password_hash').eq('email', email).maybeSingle());
+  const r = await queryOne('select id, password_hash from users where email = $1', [email]);
   return r ? { id: r.id as number, password_hash: r.password_hash as string } : null;
 }

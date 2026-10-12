@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createHash, randomBytes } from 'node:crypto';
 import { cache } from 'react';
-import { db, ok, ts } from '@/lib/db';
+import { query, queryOne, ts } from '@/lib/db';
 
 const COOKIE = 'jkaaf_session';
 const SESSION_DAYS = 14;
@@ -24,14 +24,14 @@ export interface User {
 /** Columns that are safe to load (never the password hash). */
 export const USER_COLS = 'id, email, first_name, last_name, phone, dojo, rank, role, status, created_at';
 
-export const toUser = (r: Record<string, unknown>): User => ({ ...(r as unknown as User), created_at: ts(r.created_at as string) });
+export const toUser = (r: Record<string, unknown>): User => ({ ...(r as unknown as User), created_at: ts(r.created_at as Date | string) });
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
 export async function createSession(userId: number) {
   const token = randomBytes(32).toString('hex');
   const expires = Date.now() + SESSION_DAYS * 86_400_000;
-  ok(await db().from('sessions').insert({ token_hash: sha(token), user_id: userId, expires_at: expires }));
+  await query('insert into sessions (token_hash, user_id, expires_at) values ($1, $2, $3)', [sha(token), userId, expires]);
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
@@ -43,14 +43,14 @@ export async function createSession(userId: number) {
 
 /** After a password change: sign out every device, then keep this one signed in. */
 export async function replaceAllSessions(userId: number) {
-  ok(await db().from('sessions').delete().eq('user_id', userId));
+  await query('delete from sessions where user_id = $1', [userId]);
   await createSession(userId);
 }
 
 export async function destroySession() {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
-  if (token) ok(await db().from('sessions').delete().eq('token_hash', sha(token)));
+  if (token) await query('delete from sessions where token_hash = $1', [sha(token)]);
   store.delete(COOKIE);
 }
 
@@ -58,15 +58,13 @@ export async function destroySession() {
 export const getUser = cache(async (): Promise<User | null> => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
-  const session = ok(
-    await db().from('sessions').select('user_id').eq('token_hash', sha(token)).gt('expires_at', Date.now()).maybeSingle(),
-  );
+  const session = await queryOne('select user_id from sessions where token_hash = $1 and expires_at > $2', [sha(token), Date.now()]);
   if (!session) return null;
   return getUserById(session.user_id as number);
 });
 
 export async function getUserById(id: number): Promise<User | null> {
-  const row = ok(await db().from('users').select(USER_COLS).eq('id', id).maybeSingle());
+  const row = await queryOne(`select ${USER_COLS} from users where id = $1`, [id]);
   return row ? toUser(row) : null;
 }
 
