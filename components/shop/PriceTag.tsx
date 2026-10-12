@@ -15,6 +15,7 @@ export default function PriceTag({ product, size = 'md' }: { product: Product; s
         {sale && <span className="ml-2 text-sm font-semibold text-gray-400 line-through">{formatCents(product.price_cents)}</span>}
         {product.price_note && <span className="text-xs font-semibold text-gray-500 ml-2">{product.price_note}</span>}
       </p>
+      {product.ships_note && <p className="mt-1 text-sm font-bold text-amber-700">{product.ships_note}</p>}
       {sale && (
         <p className="mt-1 inline-block text-xs font-bold text-white bg-red-600 rounded-full px-2.5 py-0.5">
           SALE · ends {fmtDate(product.sale_ends_on)}

@@ -1,6 +1,7 @@
 import 'server-only';
 import { query, queryOne, type DbRow, ts } from '@/lib/db';
 import { toUser, USER_COLS, type User } from '@/lib/auth';
+import { salesTaxCents } from '@/lib/tax';
 import { currentPriceCents, type Product, type ProductInput } from '@/lib/products';
 
 // ---------- Products ----------
@@ -23,6 +24,7 @@ function toProduct(r: Row): Product {
     sale_ends_on: (r.sale_ends_on as string) ?? '',
     stock: (r.stock as number | null) ?? null,
     free_shipping: r.free_shipping !== false,
+    ships_note: (r.ships_note as string) ?? '',
     options: (r.options as Product['options']) ?? [],
     physical: !!r.physical,
     requires_dojo_approval: !!r.requires_dojo_approval,
@@ -63,13 +65,14 @@ export async function saveProduct(id: number | null, p: ProductInput): Promise<n
     p.physical,
     p.requires_dojo_approval,
     p.active,
+    p.ships_note,
     p.sort,
   ];
   if (id === null) {
     const r = await queryOne(
       `insert into products (name, slug, description, price_cents, price_note, image_url, sale_price_cents, sale_ends_on,
-         stock, free_shipping, options, physical, requires_dojo_approval, active, sort)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15) returning id`,
+         stock, free_shipping, options, physical, requires_dojo_approval, active, ships_note, sort)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, $16) returning id`,
       values,
     );
     return r!.id as number;
@@ -77,8 +80,8 @@ export async function saveProduct(id: number | null, p: ProductInput): Promise<n
   await query(
     `update products set name = $1, slug = $2, description = $3, price_cents = $4, price_note = $5, image_url = $6,
        sale_price_cents = $7, sale_ends_on = $8, stock = $9, free_shipping = $10, options = $11::jsonb, physical = $12,
-       requires_dojo_approval = $13, active = $14, sort = $15
-     where id = $16`,
+       requires_dojo_approval = $13, active = $14, ships_note = $15, sort = $16
+     where id = $17`,
     [...values, id],
   );
   return id;
@@ -278,6 +281,8 @@ export interface Order {
   status: 'awaiting_payment' | 'paid' | 'completed' | 'cancelled';
   payment_method: string;
   total_cents: number;
+  /** Sales tax included in total_cents. */
+  tax_cents: number;
   ship_name: string;
   ship_address: string;
   ship_city: string;
@@ -323,6 +328,7 @@ export async function placeOrder(
     total += l.priced.unitCents * l.quantity;
   }
 
+  const tax = salesTaxCents(total, ship.state);
   // One database function does stock check + order + items + empty cart atomically.
   const items = cart.map((l) => {
     const p = l.priced as PricedLine;
@@ -337,9 +343,9 @@ export async function placeOrder(
     };
   });
   try {
-    const r = await queryOne('select place_order($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb) as id', [
+    const r = await queryOne('select place_order($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10) as id', [
       user.id,
-      total,
+      total + tax,
       ship.name,
       ship.address,
       ship.city,
@@ -347,6 +353,7 @@ export async function placeOrder(
       ship.zip,
       notes,
       JSON.stringify(items),
+      tax,
     ]);
     return { orderId: Number(r!.id) };
   } catch (e) {
@@ -362,6 +369,7 @@ const toOrder = (r: Row): Order => {
     status: r.status as Order['status'],
     payment_method: r.payment_method as string,
     total_cents: r.total_cents as number,
+    tax_cents: (r.tax_cents as number) ?? 0,
     ship_name: r.ship_name as string,
     ship_address: r.ship_address as string,
     ship_city: r.ship_city as string,

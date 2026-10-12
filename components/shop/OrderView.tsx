@@ -40,6 +40,12 @@ export default function OrderView({ order, items }: { order: Order; items: Order
               <span className="font-semibold text-gray-700">Included in item prices</span>
             )}
         </div>
+        {order.tax_cents > 0 && (
+          <div className="flex justify-between text-sm text-gray-700">
+            <span>Sales tax</span>
+            <span className="font-semibold">{formatCents(order.tax_cents)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-lg font-extrabold">
           <span>Total</span>
           <span>{formatCents(order.total_cents)}</span>
@@ -47,7 +53,7 @@ export default function OrderView({ order, items }: { order: Order; items: Order
       </div>
       {hasShipping && (
         <div className="mt-5 text-sm text-gray-700">
-          <p className="font-bold text-gray-900">Ship to</p>
+          <p className="font-bold text-gray-900">Address</p>
           <p>{order.ship_name}</p>
           <p>{order.ship_address}</p>
           <p>

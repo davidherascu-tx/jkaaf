@@ -32,8 +32,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         )}
         {user.status === 'pending' && (
           <Notice tone="warn">
-            <strong>Membership pending.</strong> JKA/AF is reviewing your new account. You can already shop and place orders; this just
-            confirms your membership.
+            <strong>Membership pending.</strong> You can shop and place orders as usual. Approval is only needed for products that
+            require it, such as the Club Membership.
           </Notice>
         )}
         {user.status === 'rejected' && (

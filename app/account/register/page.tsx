@@ -10,7 +10,7 @@ export default async function RegisterPage() {
   return (
     <PageShell
       title="Create an account"
-      subtitle="New accounts are reviewed and approved by JKA/AF."
+      subtitle="Create an account to shop and place orders. Approval is only needed for products that require it, such as the Club Membership."
     >
       <div className="max-w-xl">
         <RegisterForm />

@@ -25,6 +25,7 @@ export default function ProductForm({ product }: { product: Product | null }) {
     free_shipping: product?.free_shipping ?? true,
     requires_dojo_approval: product?.requires_dojo_approval ?? false,
     active: product?.active ?? true,
+    ships_note: product?.ships_note ?? '',
     sort: String(product?.sort ?? 0),
     options:
       product?.options.map((o) => ({
@@ -91,6 +92,9 @@ export default function ProductForm({ product }: { product: Product | null }) {
             <input type="date" value={v.sale_ends_on} onChange={(e) => set('sale_ends_on', e.target.value)} className={inputClass} />
           </Field>
         </div>
+        <Field label="Pre-order note" hint='e.g. "Expected to ship by June 2027". When set, the button says Pre-order. Blank = ships normally.'>
+          <input value={v.ships_note} onChange={(e) => set('ships_note', e.target.value)} maxLength={120} className={inputClass} />
+        </Field>
         <Field label="Image link" hint="A https:// link, or a file in the site's public folder such as /jkaaf_logo.png.">
           <input value={v.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://..." className={inputClass} />
         </Field>

@@ -38,6 +38,7 @@ export interface ProductPayload {
   free_shipping: boolean;
   requires_dojo_approval: boolean;
   active: boolean;
+  ships_note: string;
   sort: string;
   options: { id: string; label: string; type: 'select' | 'text' | 'club'; required: boolean; choicesText: string }[];
 }
@@ -110,6 +111,7 @@ export async function saveProductAction(p: ProductPayload): Promise<{ error: str
     free_shipping: p.free_shipping,
     requires_dojo_approval: p.requires_dojo_approval,
     active: p.active,
+    ships_note: p.ships_note.trim().slice(0, 120),
     sort: parseInt(p.sort, 10) || 0,
   });
   revalidatePath('/shop', 'layout');

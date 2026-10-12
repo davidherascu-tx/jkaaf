@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import PhoneInput from '@/components/shop/PhoneInput';
 import SignaturePad, { type SignatureValue } from '@/components/SignaturePad';
 
 const MEMBER_ORGS = ['JKAAF', 'JKAWF Americas', 'SKDI', 'Other/Independent'] as const;
@@ -348,7 +349,7 @@ export default function RegisterPage() {
 
               <div id="field-phone">
                 <FieldLabel required>Phone number</FieldLabel>
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
+                <PhoneInput value={phone} onChange={setPhone} className={inputClass} />
                 {errors.phone && <p className="mt-1 text-xs text-red-600 font-semibold">{errors.phone}</p>}
               </div>
               <div id="field-email">

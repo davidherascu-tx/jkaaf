@@ -75,7 +75,7 @@ export default function AddToCartForm({
           className={`${field} !w-20 shrink-0`}
         />
         <button type="submit" disabled={pending} className={`${primaryBtn} flex-1 ${compact ? '!py-2.5' : ''}`}>
-          {pending ? 'Adding…' : 'Add to cart'}
+          {pending ? 'Adding…' : product.ships_note ? 'Pre-order' : 'Add to cart'}
         </button>
       </div>
       {state.added && !state.error && !pending && (

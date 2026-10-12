@@ -225,3 +225,78 @@ select * from (values
    false, true, 3)
 ) as v(slug, name, description, price_cents, price_note, image_url, free_shipping, options, physical, requires_dojo_approval, sort)
 where not exists (select 1 from products);
+
+-- Added after launch: only inserted if missing, so existing shops keep their edits.
+insert into products (slug, name, description, price_cents, price_note, image_url, free_shipping, options, physical, requires_dojo_approval, sort)
+select 'jkaaf-individual-membership', 'JKA/AF Individual Membership',
+  E'Purchase your individual membership here.\n\nKyu ranks - purchase a CARD.\n\nDan ranks, or kyu ranks that have purchased a passport - purchase a STICKER.\n\nMemberships are automatically issued to the purchaser. Parents - if you are buying for your child (or teachers, if you are buying for your student) - write the child/student''s name in the notes section of your checkout cart.',
+  6000, 'per year', '/jkaaf_logo.png', true,
+  '[{"id":"sticker_card","label":"Sticker or Card (optional)","type":"select","required":false,"choices":[{"label":"JKAAF Sticker (for passports)","priceCents":0},{"label":"JKAAF Card (for kyu ranks)","priceCents":0}]},{"id":"billing","label":"Price Options","type":"select","required":true,"choices":[{"label":"One-time purchase","priceCents":0},{"label":"Individual Subscription - every year until canceled","priceCents":0,"recurring":true}]}]'::jsonb,
+  false, false, 4
+where not exists (select 1 from products where slug = 'jkaaf-individual-membership');
+
+insert into products (slug, name, description, price_cents, price_note, image_url, free_shipping, options, physical, requires_dojo_approval, sort)
+select 'mikami-biography-all-south-karate-fed', 'Sensei Takayuki Mikami Biography & History of All South Karate Fed.',
+  '', 7000, '', '/jkaaf_logo.png', true, '[]'::jsonb, true, false, 5
+where not exists (select 1 from products where slug = 'mikami-biography-all-south-karate-fed');
+
+-- Pre-order message shown on the product (e.g. "Expected to ship by June 2027"); blank = ships normally.
+alter table products add column if not exists ships_note text not null default '';
+
+-- Sales tax per order (total_cents includes it).
+alter table orders add column if not exists tax_cents integer not null default 0;
+
+drop function if exists place_order(bigint, integer, text, text, text, text, text, text, jsonb);
+create or replace function place_order(
+  p_user_id bigint,
+  p_total integer,
+  p_ship_name text,
+  p_ship_address text,
+  p_ship_city text,
+  p_ship_state text,
+  p_ship_zip text,
+  p_notes text,
+  p_items jsonb,
+  p_tax integer default 0
+) returns bigint
+language plpgsql
+as $$
+declare
+  v_order_id bigint;
+  r record;
+  v_stock integer;
+  v_name text;
+begin
+  for r in
+    select (i ->> 'product_id')::bigint as product_id, sum((i ->> 'quantity')::integer) as qty
+    from jsonb_array_elements(p_items) i
+    group by 1
+  loop
+    select stock, name into v_stock, v_name from products where id = r.product_id for update;
+    if found and v_stock is not null then
+      if v_stock < r.qty then
+        raise exception 'Only % of % left in stock.', greatest(v_stock, 0), v_name;
+      end if;
+      update products set stock = stock - r.qty where id = r.product_id;
+    end if;
+  end loop;
+
+  insert into orders (user_id, total_cents, tax_cents, ship_name, ship_address, ship_city, ship_state, ship_zip, notes)
+  values (p_user_id, p_total, p_tax, p_ship_name, p_ship_address, p_ship_city, p_ship_state, p_ship_zip, p_notes)
+  returning id into v_order_id;
+
+  insert into order_items (order_id, product_id, name, unit_cents, quantity, selections, recurring, free_shipping)
+  select v_order_id,
+         (i ->> 'product_id')::bigint,
+         i ->> 'name',
+         (i ->> 'unit_cents')::integer,
+         (i ->> 'quantity')::integer,
+         coalesce(i -> 'selections', '[]'::jsonb),
+         coalesce((i ->> 'recurring')::boolean, false),
+         coalesce((i ->> 'free_shipping')::boolean, true)
+  from jsonb_array_elements(p_items) i;
+
+  delete from cart_items where user_id = p_user_id;
+  return v_order_id;
+end;
+$$;

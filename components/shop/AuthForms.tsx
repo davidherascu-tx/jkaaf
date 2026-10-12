@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useActionState } from 'react';
 import { changePasswordAction, loginAction, registerAction, type FormState, type PasswordState } from '@/app/account/actions';
 import { Card, ErrorBox, Field, inputClass, Notice, primaryBtn } from '@/components/shop/ui';
+import PhoneInput from '@/components/shop/PhoneInput';
 
 const initial: FormState = {};
 
@@ -53,7 +54,7 @@ export function RegisterForm() {
         </Field>
         <div className="grid sm:grid-cols-2 gap-5">
           <Field label="Phone">
-            <input name="phone" type="tel" autoComplete="tel" className={inputClass} />
+            <PhoneInput name="phone" className={inputClass} />
           </Field>
           <Field label="Dojo / club">
             <input name="dojo" className={inputClass} />
@@ -62,7 +63,7 @@ export function RegisterForm() {
         <Field label="Rank" hint="Helps us verify your membership.">
           <input name="rank" className={inputClass} />
         </Field>
-        <div className="grid sm:grid-cols-2 gap-5">
+        <div className="grid sm:grid-cols-2 gap-5 items-end">
           <Field label="Password" required hint="At least 8 characters.">
             <input name="password" type="password" autoComplete="new-password" minLength={8} required className={inputClass} />
           </Field>

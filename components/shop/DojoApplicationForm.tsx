@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
+import PhoneInput from '@/components/shop/PhoneInput';
 import SignaturePad, { type SignatureValue } from '@/components/SignaturePad';
 import { submitApplicationAction } from '@/app/membership/application/actions';
 import {
@@ -102,6 +103,8 @@ export default function DojoApplicationForm({ signedInAs }: { signedInAs: string
           ))}
         </div>
       );
+    } else if (f.type === 'tel') {
+      control = <PhoneInput {...common} onChange={(v) => set(f.name, v)} />;
     } else {
       control = (
         <input

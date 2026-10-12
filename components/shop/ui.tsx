@@ -24,7 +24,7 @@ export function PageShell({
 }) {
   return (
     <div className="bg-gray-50 flex-1 w-full pt-28 md:pt-36 pb-16">
-      <div className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} mx-auto px-4 sm:px-6 lg:px-8 w-full`}>
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full`}>
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">{title}</h1>
