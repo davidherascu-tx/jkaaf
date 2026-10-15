@@ -308,3 +308,65 @@ create table if not exists password_resets (
   expires_at bigint not null
 );
 create index if not exists password_resets_user_idx on password_resets (user_id);
+
+-- Email activation. Accounts that existed before this column was added are treated as already verified (one-time backfill).
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_name = 'users' and column_name = 'email_verified_at') then
+    alter table users add column email_verified_at timestamptz;
+    update users set email_verified_at = created_at;
+  end if;
+end $$;
+
+-- Activation links (token stored hashed; each link works once and expires).
+create table if not exists email_verifications (
+  token_hash text primary key,
+  user_id bigint not null references users (id) on delete cascade,
+  expires_at bigint not null
+);
+create index if not exists email_verifications_user_idx on email_verifications (user_id);
+
+-- Account dashboard: a new email waits here until the customer confirms it from the link sent to that address.
+alter table users add column if not exists pending_email text;
+
+-- One saved billing and one saved shipping address per customer.
+create table if not exists addresses (
+  user_id bigint not null references users (id) on delete cascade,
+  kind text not null check (kind in ('billing', 'shipping')),
+  name text not null default '',
+  line1 text not null default '',
+  city text not null default '',
+  state text not null default '',
+  zip text not null default '',
+  phone text not null default '',
+  primary key (user_id, kind)
+);
+
+-- Customer cancelled a yearly subscription (the line stays on the order; it just stops renewing).
+alter table order_items add column if not exists subscription_canceled_at timestamptz;
+
+-- Customers ask for JKA/AF Individual Membership approval themselves. Existing pending members count as already requested (one-time backfill).
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_name = 'users' and column_name = 'approval_requested_at') then
+    alter table users add column approval_requested_at timestamptz;
+    update users set approval_requested_at = created_at where status = 'pending' and role = 'customer';
+  end if;
+end $$;
+alter table users add column if not exists approval_note text not null default '';
+
+-- Per-item fulfilment: each line on an order is shipped / completed on its own.
+alter table order_items add column if not exists fulfillment text not null default 'pending'
+  check (fulfillment in ('pending', 'shipped', 'fulfilled'));
+alter table order_items add column if not exists tracking text not null default '';
+-- Items on orders that were already completed count as done.
+update order_items set fulfillment = 'fulfilled'
+ where fulfillment = 'pending' and order_id in (select id from orders where status = 'completed');
+
+-- Shipping provider for each shipped item (USPS, UPS, FedEx, ...), next to the tracking number.
+alter table order_items add column if not exists carrier text not null default '';
+
+-- Shipped counts as done: paid orders whose items are all shipped (or completed) are completed.
+update orders set status = 'completed'
+ where status = 'paid' and exists (select 1 from order_items where order_id = orders.id)
+   and not exists (select 1 from order_items where order_id = orders.id and fulfillment = 'pending');

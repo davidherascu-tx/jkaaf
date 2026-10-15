@@ -5,6 +5,7 @@ import PriceTag from '@/components/shop/PriceTag';
 import AddToCartForm from '@/components/shop/AddToCartForm';
 import ProductImage from '@/components/shop/ProductImage';
 import { Notice, PageShell } from '@/components/shop/ui';
+import { LockNotice, lockFor } from '@/components/shop/ShopLock';
 
 export const metadata = { title: 'Shop | JKA/AF' };
 
@@ -16,11 +17,11 @@ export default async function ShopPage() {
     <PageShell
       wide
       title="JKA/AF Shop"
-      subtitle="Renewals, patches, passports and club memberships. No account needed to start - you create one at checkout."
+      subtitle="Official JKA/AF renewals, patches, passports and memberships, available to approved JKA/AF members."
     >
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {products.map((p) => {
-          const locked = p.requires_dojo_approval && clubs.length === 0;
+          const lock = lockFor(p, user, clubs);
           return (
             <article key={p.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
               <Link href={`/shop/${p.slug}`} aria-label={p.name}>
@@ -40,18 +41,8 @@ export default async function ShopPage() {
                   )}
                   {isSoldOut(p) ? (
                     <p className="text-center font-bold text-gray-500 bg-gray-100 rounded-xl py-3">Out of stock</p>
-                  ) : locked ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                        Complete the Dojo Membership application first.
-                      </p>
-                      <Link
-                        href="/membership/application"
-                        className="block text-center font-bold text-red-600 border border-red-600 rounded-xl py-2.5 hover:bg-red-50 transition-colors"
-                      >
-                        Apply now
-                      </Link>
-                    </div>
+                  ) : lock ? (
+                    <LockNotice lock={lock} compact />
                   ) : (
                     <AddToCartForm product={p} clubs={clubs} compact />
                   )}

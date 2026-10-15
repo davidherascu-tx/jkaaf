@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/auth';
 import { getOrder } from '@/lib/shop';
 import { formatCents } from '@/lib/money';
 import OrderView from '@/components/shop/OrderView';
-import { Notice, PageShell } from '@/components/shop/ui';
+import { Notice, PageShell, secondaryBtn } from '@/components/shop/ui';
 
 export default async function OrderPage({
   params,
@@ -36,9 +36,14 @@ export default async function OrderPage({
           </Notice>
         )}
         <OrderView order={order} items={items} />
-        <Link href="/shop/orders" className="inline-block text-sm font-semibold text-gray-600 hover:text-red-600">
-          ← All orders
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href="/account/orders" className="text-sm font-semibold text-gray-600 hover:text-red-600">
+            ← All orders
+          </Link>
+          <a href={`/shop/orders/${order.id}/invoice`} className={secondaryBtn}>
+            Download invoice (PDF)
+          </a>
+        </div>
       </div>
     </PageShell>
   );

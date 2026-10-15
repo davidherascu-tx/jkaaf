@@ -10,11 +10,19 @@ import { getCustomer } from '@/lib/shopAdmin';
 import { sendAccountStatusEmail, sendApplicationResultEmail } from '@/lib/accountEmail';
 import { requireAdmin } from '@/lib/auth';
 import { parseDollars } from '@/lib/money';
+import { CARRIERS } from '@/lib/carriers';
+import { normalizeUsState } from '@/lib/regions';
+import { sendItemUpdateEmail, sendOrderCancelledEmail, sendOrderCompletedEmail, sendPaymentReceivedEmail } from '@/lib/customerEmails';
 import { textToChoices } from '@/lib/optionsText';
 import {
   deleteProduct,
   isAdminUser,
+  FULFILLMENT_STATUSES,
+  getOrder,
   ORDER_STATUSES,
+  setItemFulfillment,
+  updateOrderShipping,
+  setPaymentReceived,
   reviewApplication,
   saveProduct,
   setOrderStatus,
@@ -151,9 +159,63 @@ export async function setStockAction(id: number, fd: FormData) {
 export async function setOrderStatusAction(id: number, status: string) {
   await requireAdmin();
   if (!(ORDER_STATUSES as readonly string[]).includes(status)) return;
+  const before = (await getOrder(id))?.order.status;
   await setOrderStatus(id, status as Order['status']);
+  if (status === 'cancelled' && before !== 'cancelled') after(() => sendOrderCancelledEmail(id));
   revalidatePath('/admin', 'layout');
   revalidatePath('/shop', 'layout');
+}
+
+export async function updateOrderShippingAction(orderId: number, fd: FormData) {
+  await requireAdmin();
+  const f = (k: string) => String(fd.get(k) ?? '').trim().slice(0, 200);
+  await updateOrderShipping(orderId, { name: f('name'), address: f('address'), city: f('city'), state: normalizeUsState(f('state')), zip: f('zip') });
+  revalidatePath('/admin', 'layout');
+  revalidatePath('/account', 'layout');
+}
+
+export async function setPaymentAction(id: number, received: boolean) {
+  await requireAdmin();
+  const before = (await getOrder(id))?.order.status;
+  await setPaymentReceived(id, received);
+  const afterStatus = (await getOrder(id))?.order.status;
+  if (received && before === 'awaiting_payment') after(() => sendPaymentReceivedEmail(id));
+  if (afterStatus === 'completed' && before !== 'completed') after(() => sendOrderCompletedEmail(id));
+  revalidatePath('/admin', 'layout');
+  revalidatePath('/shop', 'layout');
+  revalidatePath('/account', 'layout');
+}
+
+export async function setItemFulfillmentAction(orderId: number, itemId: number, fd: FormData) {
+  await requireAdmin();
+  const status = String(fd.get('fulfillment') ?? '');
+  if (!(FULFILLMENT_STATUSES as readonly string[]).includes(status)) return;
+  const tracking = String(fd.get('tracking') ?? '').trim().slice(0, 120);
+  const carrier = String(fd.get('carrier') ?? '').trim();
+  const found = await getOrder(orderId);
+  const prev = found?.items.find((i) => i.id === itemId);
+  await setItemFulfillment(
+    orderId,
+    itemId,
+    status as (typeof FULFILLMENT_STATUSES)[number],
+    (CARRIERS as readonly string[]).includes(carrier) ? carrier : '',
+    tracking,
+  );
+  let emailed = false;
+  const now = await getOrder(orderId);
+  const item = now?.items.find((i) => i.id === itemId);
+  // Email on a new status, or when the tracking details of a shipped item change.
+  if (prev && item && item.fulfillment !== 'pending') {
+    const changed = item.fulfillment !== prev.fulfillment || (item.fulfillment === 'shipped' && (item.tracking !== prev.tracking || item.carrier !== prev.carrier));
+    if (changed) {
+      emailed = true;
+      after(() => sendItemUpdateEmail(orderId, itemId));
+    }
+  }
+  // The shipped / completed email already tells the customer; only send "order complete" when nothing else went out.
+  if (!emailed && found && now && now.order.status === 'completed' && found.order.status !== 'completed') after(() => sendOrderCompletedEmail(orderId));
+  revalidatePath('/admin', 'layout');
+  revalidatePath('/account', 'layout');
 }
 
 export async function setUserStatusAction(id: number, status: string) {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { checkoutAction, type ShopFormState } from "@/app/shop/actions";
 import { ErrorBox, Field, inputClass } from "@/components/shop/ui";
 import {
@@ -9,18 +9,27 @@ import {
   useCheckout,
 } from "@/components/shop/CheckoutTotals";
 import PhoneInput from "@/components/shop/PhoneInput";
+import AddressFields from "@/components/shop/AddressFields";
+import type { Address } from "@/lib/addresses";
 
 const initial: ShopFormState = {};
 
 export default function CheckoutForm({
   needsShipping,
   user,
+  billing,
+  shipping,
+  sameAsBilling,
 }: {
   needsShipping: boolean;
   user: { name: string; email: string } | null;
+  billing: Address | null;
+  shipping: Address | null;
+  sameAsBilling: boolean;
 }) {
   const [state, action, pending] = useActionState(checkoutAction, initial);
   const { setPending } = useCheckout();
+  const [sameShip, setSameShip] = useState(user ? sameAsBilling : true);
   useEffect(() => setPending(pending), [pending, setPending]);
   return (
     <form id={CHECKOUT_FORM_ID} action={action} className="space-y-6">
@@ -46,8 +55,7 @@ export default function CheckoutForm({
           </div>
           <p className="text-xs text-gray-500">
             We create your JKA/AF account with this order so you can track it.
-            Approval is only needed for products that require it, such as the
-            Club Membership.
+            We also email you a link to activate it.
           </p>
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="First name" required>
@@ -114,52 +122,45 @@ export default function CheckoutForm({
         </div>
       )}
 
+      {user && billing ? (
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <h3 className="font-bold text-gray-900">Billing address</h3>
+            <Link href="/account/addresses" className="text-sm font-semibold text-red-600 hover:underline">
+              Change
+            </Link>
+          </div>
+          <address className="not-italic text-sm text-gray-700 leading-relaxed">
+            {billing.name}
+            <br />
+            {billing.line1}, {billing.city}, {billing.state} {billing.zip}
+          </address>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <h3 className="font-bold text-gray-900">Billing address</h3>
+          <AddressFields prefix="bill" autocomplete="billing" />
+        </div>
+      )}
+
       {needsShipping && (
         <div className="space-y-4">
-          <h3 className="font-bold text-gray-900">Shipping address</h3>
-          <Field label="Full name" required>
+          <label className="flex items-center gap-3 text-sm font-semibold text-gray-800">
             <input
-              name="ship_name"
-              defaultValue={user?.name ?? ""}
-              autoComplete="name"
-              required
-              className={inputClass}
+              type="checkbox"
+              name="same_ship"
+              checked={sameShip}
+              onChange={(e) => setSameShip(e.target.checked)}
+              className="h-4 w-4 accent-red-600"
             />
-          </Field>
-          <Field label="Street address" required>
-            <input
-              name="ship_address"
-              autoComplete="street-address"
-              required
-              className={inputClass}
-            />
-          </Field>
-          <div className="grid sm:grid-cols-3 gap-4">
-            <Field label="City" required>
-              <input
-                name="ship_city"
-                autoComplete="address-level2"
-                required
-                className={inputClass}
-              />
-            </Field>
-            <Field label="State" required>
-              <input
-                name="ship_state"
-                autoComplete="address-level1"
-                required
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Zip" required>
-              <input
-                name="ship_zip"
-                autoComplete="postal-code"
-                required
-                className={inputClass}
-              />
-            </Field>
-          </div>
+            Ship to my billing address
+          </label>
+          {!sameShip && (
+            <>
+              <h3 className="font-bold text-gray-900">Shipping address</h3>
+              <AddressFields prefix="ship" autocomplete="shipping" defaults={shipping} />
+            </>
+          )}
         </div>
       )}
 

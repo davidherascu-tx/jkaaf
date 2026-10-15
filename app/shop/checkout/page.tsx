@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
+import { getAddresses, sameAddress } from "@/lib/addresses";
 import { getCartOwner } from "@/lib/cart";
 import { cartNeedsShipping, getCart } from "@/lib/shop";
 import { formatCents } from "@/lib/money";
@@ -16,6 +17,10 @@ export const metadata = { title: "Checkout | JKA/AF" };
 export default async function CheckoutPage() {
   const user = await getUser();
   const owner = await getCartOwner();
+  const addresses = user ? await getAddresses(user.id) : null;
+  if (user && !(addresses?.billing && addresses.shipping)) redirect("/account/addresses?required=1");
+  const billing = addresses?.billing ?? null;
+  const shipping = addresses?.shipping ?? null;
   const cart = owner ? await getCart(owner) : [];
   if (cart.length === 0 || cart.some((l) => "error" in l.priced))
     redirect("/shop/cart");
@@ -36,6 +41,9 @@ export default async function CheckoutPage() {
             <Card>
               <CheckoutForm
                 needsShipping={cartNeedsShipping(cart)}
+                billing={billing}
+                shipping={shipping}
+                sameAsBilling={sameAddress(billing, shipping)}
                 user={
                   user
                     ? {

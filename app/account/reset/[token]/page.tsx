@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { resetTokenValid } from '@/lib/passwordReset';
 import { ResetPasswordForm } from '@/components/shop/AuthForms';
-import { Card, Notice, PageShell } from '@/components/shop/ui';
+import { AuthShell, Card, Notice } from '@/components/shop/ui';
 
 export const metadata = { title: 'Choose a new password | JKA/AF', robots: { index: false } };
 
@@ -9,8 +9,8 @@ export default async function ResetPasswordPage({ params }: { params: Promise<{ 
   const { token } = await params;
   const valid = /^[a-f0-9]{64}$/.test(token) && (await resetTokenValid(token));
   return (
-    <PageShell title="Choose a new password">
-      <div className="max-w-xl">
+    <AuthShell title="Choose a new password">
+      <div>
         {valid ? (
           <ResetPasswordForm token={token} />
         ) : (
@@ -24,6 +24,6 @@ export default async function ResetPasswordPage({ params }: { params: Promise<{ 
           </Card>
         )}
       </div>
-    </PageShell>
+    </AuthShell>
   );
 }

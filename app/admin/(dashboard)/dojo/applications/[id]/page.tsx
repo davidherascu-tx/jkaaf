@@ -13,7 +13,7 @@ export default async function AdminApplication({ params }: { params: Promise<{ i
   const typedSig = app.signature.startsWith('typed:') ? app.signature.slice(6) : null;
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="space-y-5">
       <Link href="/admin/dojo/applications" className="text-sm font-semibold text-gray-600 hover:text-red-600">
         ← All applications
       </Link>

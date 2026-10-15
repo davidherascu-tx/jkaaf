@@ -6,7 +6,7 @@ import { formatCents } from '@/lib/money';
 import { Badge, Card } from '@/components/shop/ui';
 import ResetPassword from './ResetPassword';
 
-export const metadata = { title: 'Customer | Dashboard' };
+export const metadata = { title: 'Customer | Admin dashboard' };
 
 export default async function AdminCustomer({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

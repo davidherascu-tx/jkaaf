@@ -6,6 +6,7 @@ import PriceTag from '@/components/shop/PriceTag';
 import AddToCartForm from '@/components/shop/AddToCartForm';
 import ProductImage from '@/components/shop/ProductImage';
 import { Card, Notice, PageShell } from '@/components/shop/ui';
+import { LockNotice, lockFor } from '@/components/shop/ShopLock';
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -14,7 +15,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const user = await getUser();
   const clubs = user ? await approvedClubNames(user.id) : [];
-  const needsApplication = product.requires_dojo_approval && clubs.length === 0;
+  const lock = lockFor(product, user, clubs);
 
   return (
     <PageShell wide title={product.name}>
@@ -33,14 +34,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
           {isSoldOut(product) ? (
             <Notice tone="warn">This item is currently out of stock.</Notice>
-          ) : needsApplication ? (
-            <Notice tone="warn">
-              Before paying dues, please complete the{' '}
-              <Link href="/membership/application" className="font-bold underline">
-                Dojo Membership application
-              </Link>
-              . This product unlocks once an administrator approves it.
-            </Notice>
+          ) : lock ? (
+            <LockNotice lock={lock} />
           ) : (
             <Card className="!p-5">
               <AddToCartForm product={product} clubs={clubs} />

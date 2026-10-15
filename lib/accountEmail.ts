@@ -6,23 +6,23 @@ import { buildApplicationPdf } from '@/lib/applicationPdf';
 
 const site = () => process.env.NEXT_PUBLIC_SITE_URL || '';
 
-/** Tells a member their account was approved (activated) or declined. Never throws. */
+/** Tells a member their JKA/AF Individual Membership was approved or declined. Never throws. */
 export async function sendAccountStatusEmail(userId: number, status: 'approved' | 'rejected'): Promise<void> {
   try {
     const user = await getUserById(userId);
     if (!user) return;
     const approved = status === 'approved';
     const { html, text } = simpleEmail(
-      approved ? 'Your JKA/AF account is activated' : 'Update on your JKA/AF account',
+      approved ? 'Your JKA/AF Individual Membership is approved' : 'Update on your JKA/AF Individual Membership',
       [
         `Hello ${user.first_name},`,
         approved
-          ? 'Your JKA/AF membership account has been approved. You can now sign in and order products that require approval, such as the Club Membership.'
-          : 'We could not approve your JKA/AF membership account. Please contact JKA/AF if you have questions.',
+          ? 'Good news: your JKA/AF Individual Membership has been approved. You can now sign in and order from the JKA/AF shop.'
+          : 'We could not approve your JKA/AF Individual Membership. Please contact JKA/AF if you have questions.',
         ...(approved && site() ? [`Sign in: ${site()}/account/login`] : []),
       ],
     );
-    await sendMail({ to: user.email, subject: approved ? 'Your JKA/AF account is activated' : 'Your JKA/AF account', html, text });
+    await sendMail({ to: user.email, subject: approved ? 'Your JKA/AF Individual Membership is approved' : 'Your JKA/AF Individual Membership', html, text });
   } catch (e) {
     console.error('[email] account status email failed:', e);
   }
@@ -39,7 +39,7 @@ export async function sendApplicationResultEmail(applicationId: number): Promise
       [
         `Application for: ${app.dojo_name}`,
         approved
-          ? 'Your application was approved. The Club Membership is now available in the JKA/AF shop for your account. A PDF copy of your application is attached for your records.'
+          ? 'Your application was approved. The Club Membership is now available in the JKA/AF shop for your account (once your JKA/AF Individual Membership is also approved). A PDF copy of your application is attached for your records.'
           : 'Your application was not approved.',
         ...(app.admin_note ? [`Note from JKA/AF: ${app.admin_note}`] : []),
       ],
@@ -50,5 +50,27 @@ export async function sendApplicationResultEmail(applicationId: number): Promise
     await sendMail({ to: app.applicant_email, subject: `Dojo Membership application ${approved ? 'approved' : 'update'}`, html, text, attachments });
   } catch (e) {
     console.error('[email] application result email failed:', e);
+  }
+}
+
+/** Tells JKA/AF a customer asked for Individual Membership approval. Never throws. */
+export async function sendApprovalRequestEmail(userId: number): Promise<void> {
+  try {
+    const to = process.env.APPLICATION_NOTIFY_EMAIL || process.env.ORDER_NOTIFY_EMAIL || '';
+    if (!to) {
+      console.warn('[email] Set APPLICATION_NOTIFY_EMAIL (or ORDER_NOTIFY_EMAIL) to be told about membership approval requests.');
+      return;
+    }
+    const user = await getUserById(userId);
+    if (!user) return;
+    const { html, text } = simpleEmail('JKA/AF Individual Membership approval requested', [
+      `${user.first_name} ${user.last_name} (${user.email}) asked to be approved.`,
+      `Dojo: ${user.dojo || '-'}  ·  Rank: ${user.rank || '-'}`,
+      ...(user.approval_note ? [`Note: ${user.approval_note}`] : []),
+      ...(site() ? [`Review: ${site()}/admin/dojo/members`] : []),
+    ]);
+    await sendMail({ to, subject: `Membership approval requested: ${user.first_name} ${user.last_name}`, html, text });
+  } catch (e) {
+    console.error('[email] approval request email failed:', e);
   }
 }

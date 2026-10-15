@@ -1,6 +1,6 @@
 import 'server-only';
 import { query, queryOne, ts } from '@/lib/db';
-import type { Order } from '@/lib/shop';
+import { shippingSummary, type Order } from '@/lib/shop';
 
 // Read-only reporting queries for the shop dashboard. "Revenue" counts paid and completed orders only.
 const REVENUE = "status in ('paid', 'completed')";
@@ -53,9 +53,14 @@ export async function shopStats(): Promise<ShopStats> {
 }
 
 /** Orders with customer info, optionally filtered by status and a search on order #, name or email. */
-export async function listOrdersAdmin(opts: { status?: string; q?: string; limit?: number } = {}): Promise<Order[]> {
+export async function listOrdersAdmin(opts: { status?: string; toShip?: boolean; q?: string; limit?: number } = {}): Promise<Order[]> {
   const where: string[] = [];
   const params: unknown[] = [];
+  if (opts.toShip) {
+    where.push(
+      `o.status <> 'cancelled' and exists (select 1 from order_items x left join products p on p.id = x.product_id where x.order_id = o.id and (p.physical or x.selections::text ilike '%sticker or card%') and x.fulfillment = 'pending')`,
+    );
+  }
   if (opts.status) {
     params.push(opts.status);
     where.push(`o.status = $${params.length}`);
@@ -68,7 +73,12 @@ export async function listOrdersAdmin(opts: { status?: string; q?: string; limit
     where.push(`(o.id::text = ${exact} or lower(u.first_name || ' ' || u.last_name) like ${like} or lower(u.email) like ${like})`);
   }
   const rows = await query(
-    `select o.*, u.first_name as customer_first, u.last_name as customer_last, u.email as customer_email
+    `select o.*, u.first_name as customer_first, u.last_name as customer_last, u.email as customer_email,
+            (select count(*) from order_items x where x.order_id = o.id) as items_total,
+            (select count(*) from order_items x where x.order_id = o.id and x.fulfillment <> 'pending') as items_done,
+            (select count(*) from order_items x left join products p on p.id = x.product_id where x.order_id = o.id and (p.physical or x.selections::text ilike '%sticker or card%')) as ship_total,
+            (select count(*) from order_items x left join products p on p.id = x.product_id where x.order_id = o.id and (p.physical or x.selections::text ilike '%sticker or card%') and x.fulfillment = 'pending') as ship_pending,
+            (select count(*) from order_items x left join products p on p.id = x.product_id where x.order_id = o.id and (p.physical or x.selections::text ilike '%sticker or card%') and x.fulfillment = 'shipped') as ship_shipped
      from orders o left join users u on u.id = o.user_id
      ${where.length ? 'where ' + where.join(' and ') : ''}
      order by o.id desc ${opts.limit ? `limit ${Math.floor(opts.limit)}` : ''}`,
@@ -94,6 +104,9 @@ function toOrder(r: Record<string, unknown>): Order {
     created_at: ts(r.created_at as Date),
     customer_name: hasCustomer ? `${r.customer_first} ${r.customer_last}` : undefined,
     customer_email: hasCustomer ? (r.customer_email as string) : undefined,
+    items_total: r.items_total === undefined ? undefined : Number(r.items_total),
+    items_done: r.items_done === undefined ? undefined : Number(r.items_done),
+    shipping: r.ship_total === undefined ? undefined : shippingSummary(Number(r.ship_total), Number(r.ship_pending), Number(r.ship_shipped)),
   };
 }
 

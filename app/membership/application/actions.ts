@@ -3,8 +3,7 @@
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 import { sendApplicationEmails } from '@/lib/applicationEmail';
-import { getUser, getUserById } from '@/lib/auth';
-import { createAccount } from '@/lib/accounts';
+import { getUser } from '@/lib/auth';
 import { createApplication } from '@/lib/shop';
 import { ALL_CLAUSES, ALL_FIELDS, isVisible, validateApplication, type Values } from '@/lib/dojoForm';
 
@@ -23,20 +22,12 @@ export async function submitApplicationAction(
   signature: string,
   account: AccountValues | null,
 ): Promise<{ error: string } | undefined> {
-  let user = await getUser();
+  const user = await getUser();
+  if (!user) return { error: 'Please sign in to submit a Dojo Membership application.' };
 
   const errors = validateApplication(values, signature);
   if (Object.keys(errors).length > 0 || !SIGNATURE_RE.test(signature)) {
     return { error: 'Please complete all required fields and sign the application.' };
-  }
-
-  // Guests create their account as part of the application.
-  if (!user) {
-    if (!account) return { error: 'Please enter your account details.' };
-    const res = await createAccount({ ...account, dojo: values.dojo_name, phone: values.ci_phone, rank: values.ci_jka_rank });
-    if ('error' in res) return { error: res.error };
-    user = await getUserById(res.id);
-    if (!user) return { error: 'Could not create your account. Please try again.' };
   }
 
   // Persist only known fields (ignore anything extra a client might send).

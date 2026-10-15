@@ -4,12 +4,13 @@ import { listOrdersAdmin } from '@/lib/shopAdmin';
 import { formatCents } from '@/lib/money';
 import { Badge, Card, inputClass, primaryBtn, secondaryBtn } from '@/components/shop/ui';
 
-export const metadata = { title: 'Orders | Dashboard' };
+export const metadata = { title: 'Orders | Admin dashboard' };
 
 export default async function AdminOrders({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
   const { status, q } = await searchParams;
-  const valid = (ORDER_STATUSES as readonly string[]).includes(status ?? '') ? status : undefined;
-  const orders = await listOrdersAdmin({ status: valid, q });
+  const toShip = status === 'to_ship';
+  const valid = toShip || (ORDER_STATUSES as readonly string[]).includes(status ?? '') ? status : undefined;
+  const orders = await listOrdersAdmin({ status: toShip ? undefined : valid, toShip, q });
   const tab = (value: string | undefined, label: string) => (
     <Link
       key={label}
@@ -33,6 +34,7 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           {tab(undefined, 'All')}
+          {tab('to_ship', 'To ship')}
           {ORDER_STATUSES.map((s) => tab(s, ORDER_STATUS_LABEL[s]))}
         </div>
         <form className="flex gap-2" action="/admin/shop/orders">
@@ -50,7 +52,9 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
               <th className="p-4">Customer</th>
               <th className="p-4">Date (UTC)</th>
               <th className="p-4">Total</th>
-              <th className="p-4">Status</th>
+              <th className="p-4">Payment</th>
+              <th className="p-4">Shipping</th>
+              <th className="p-4">Items</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -72,11 +76,15 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
                 <td className="p-4">
                   <Badge value={o.status} label={ORDER_STATUS_LABEL[o.status]} />
                 </td>
+                <td className="p-4 text-gray-700">{o.status === 'cancelled' ? '—' : o.shipping}</td>
+                <td className="p-4 text-gray-700">
+                  {o.status === 'cancelled' ? '—' : `${o.items_done ?? 0} of ${o.items_total ?? 0} done`}
+                </td>
               </tr>
             ))}
             {orders.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-6 text-gray-500">
+                <td colSpan={7} className="p-6 text-gray-500">
                   No orders found.
                 </td>
               </tr>

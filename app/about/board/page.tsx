@@ -89,7 +89,7 @@ export default function BoardPage() {
       </div>
 
       {/* Executive Board Section */}
-      <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 mb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
         <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-3">
           <span className="w-2 h-8 bg-red-600 rounded-full"></span>
           Executive Board
@@ -103,7 +103,7 @@ export default function BoardPage() {
       </div>
 
       {/* General Board Members Section */}
-      <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-3">
           <span className="w-2 h-8 bg-red-600 rounded-full"></span>
           Board Members

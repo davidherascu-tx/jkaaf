@@ -18,7 +18,7 @@ export default async function NewsPage() {
 
   return (
     <div className="bg-gray-50 flex-1 w-full flex flex-col pt-28 md:pt-40 pb-12 lg:pb-16 font-sans">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         
         <div className="mb-6 border-b border-gray-200 pb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight">

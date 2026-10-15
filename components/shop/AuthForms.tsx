@@ -7,6 +7,7 @@ import {
   forgotPasswordAction,
   loginAction,
   registerAction,
+  resendActivationAction,
   resetPasswordAction,
   type ForgotState,
   type FormState,
@@ -24,6 +25,13 @@ export function LoginForm({ next, showRegisterLink = true }: { next: string; sho
       <form action={action} className="space-y-5">
         <input type="hidden" name="next" value={next} />
         {state.error && <ErrorBox>{state.error}</ErrorBox>}
+        {state.needsActivation && (
+          <p className="text-sm -mt-2">
+            <Link href="/account/activate" className="font-semibold text-red-600 hover:underline">
+              Send me a new activation email
+            </Link>
+          </p>
+        )}
         <Field label="Email" required>
           <input name="email" type="email" autoComplete="email" required className={inputClass} />
         </Field>
@@ -175,6 +183,30 @@ export function ResetPasswordForm({ token }: { token: string }) {
         </div>
         <button type="submit" disabled={pending} className={`${primaryBtn} w-full`}>
           {pending ? 'Saving…' : 'Set new password'}
+        </button>
+      </form>
+    </Card>
+  );
+}
+
+export function ResendActivationForm() {
+  const [state, action, pending] = useActionState(resendActivationAction, {} as ForgotState);
+  if (state.sent) {
+    return (
+      <Card>
+        <Notice tone="ok">If that email has an account waiting to be activated, a new link is on its way. Check your inbox.</Notice>
+      </Card>
+    );
+  }
+  return (
+    <Card>
+      <form action={action} className="space-y-5">
+        {state.error && <ErrorBox>{state.error}</ErrorBox>}
+        <Field label="Email" required>
+          <input name="email" type="email" autoComplete="email" required className={inputClass} />
+        </Field>
+        <button type="submit" disabled={pending} className={`${primaryBtn} w-full`}>
+          {pending ? 'Sending…' : 'Send activation email'}
         </button>
       </form>
     </Card>

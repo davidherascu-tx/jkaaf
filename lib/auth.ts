@@ -17,12 +17,19 @@ export interface User {
   dojo: string;
   rank: string;
   role: 'customer' | 'admin';
+  /** JKA/AF Individual Membership approval (set by an admin). Needed to order most shop products. */
   status: 'pending' | 'approved' | 'rejected';
+  email_verified: boolean;
+  /** A new email address waiting to be confirmed from the link sent to it. */
+  pending_email: string | null;
+  /** True once the customer has asked for JKA/AF Individual Membership approval. */
+  approval_requested: boolean;
+  approval_note: string;
   created_at: string;
 }
 
 /** Columns that are safe to load (never the password hash). */
-export const USER_COLS = 'id, email, first_name, last_name, phone, dojo, rank, role, status, created_at';
+export const USER_COLS = 'id, email, first_name, last_name, phone, dojo, rank, role, status, (email_verified_at is not null) as email_verified, pending_email, (approval_requested_at is not null) as approval_requested, approval_note, created_at';
 
 export const toUser = (r: Record<string, unknown>): User => ({ ...(r as unknown as User), created_at: ts(r.created_at as Date | string) });
 

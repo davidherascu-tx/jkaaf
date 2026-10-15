@@ -2,7 +2,7 @@ import { salesByMonth, salesByProduct } from '@/lib/shopAdmin';
 import { formatCents } from '@/lib/money';
 import { Card, secondaryBtn } from '@/components/shop/ui';
 
-export const metadata = { title: 'Reports | Dashboard' };
+export const metadata = { title: 'Reports | Admin dashboard' };
 
 const monthLabel = (m: string) => new Date(`${m}-01T12:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 

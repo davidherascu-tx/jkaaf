@@ -101,3 +101,29 @@ export function Badge({ value, label }: { value: string; label?: string }) {
     </span>
   );
 }
+
+/** Sign-in style page: heading and card centred on the screen. */
+export function AuthShell({
+  title,
+  subtitle,
+  children,
+  size = 'md',
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  children: ReactNode;
+  size?: 'md' | 'xl';
+}) {
+  return (
+    <div className="bg-gray-50 flex-1 w-full flex items-center justify-center pt-28 md:pt-36 pb-16 px-4">
+      <div className={`w-full ${size === 'xl' ? 'max-w-xl' : 'max-w-md'}`}>
+        <div className="text-center mb-6">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">{title}</h1>
+          <div className="w-16 h-1.5 bg-red-600 rounded-full mx-auto mt-3 mb-3" />
+          {subtitle && <p className="text-gray-600">{subtitle}</p>}
+        </div>
+        <div className="space-y-4">{children}</div>
+      </div>
+    </div>
+  );
+}

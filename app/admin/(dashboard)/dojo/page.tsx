@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { adminCounts, listApplications, listUsers } from '@/lib/shop';
 import { Badge, Card } from '@/components/shop/ui';
 
-export const metadata = { title: 'Dojo & Members | Dashboard' };
+export const metadata = { title: 'Dojo & Members | Admin dashboard' };
 
 export default async function DojoOverview() {
   const c = await adminCounts();

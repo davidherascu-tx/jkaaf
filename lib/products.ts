@@ -54,3 +54,9 @@ export function currentPriceCents(p: Product): number {
   return isOnSale(p) ? (p.sale_price_cents as number) : p.price_cents;
 }
 
+
+/** Products anyone with an account can order without JKA/AF Individual Membership approval. */
+const OPEN_PRODUCT_SLUGS = ['mikami-biography-all-south-karate-fed'];
+
+/** Every other product needs the customer's JKA/AF Individual Membership to be approved first. */
+export const needsJkaApproval = (p: Pick<Product, 'slug'>) => !OPEN_PRODUCT_SLUGS.includes(p.slug);

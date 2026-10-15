@@ -25,14 +25,14 @@ try {
   await client.connect();
   const found = await client.query('select id from users where lower(email) = $1', [email]);
   if (found.rows.length) {
-    await client.query("update users set password_hash = $1, role = 'admin', status = 'approved' where id = $2", [
+    await client.query("update users set password_hash = $1, role = 'admin', status = 'approved', email_verified_at = coalesce(email_verified_at, now()) where id = $2", [
       password_hash,
       found.rows[0].id,
     ]);
     console.log(`Updated admin account: ${email}`);
   } else {
     await client.query(
-      "insert into users (email, password_hash, first_name, last_name, role, status) values ($1, $2, 'Site', 'Admin', 'admin', 'approved')",
+      "insert into users (email, password_hash, first_name, last_name, role, status, email_verified_at) values ($1, $2, 'Site', 'Admin', 'admin', 'approved', now())",
       [email, password_hash],
     );
     console.log(`Created admin account: ${email}`);

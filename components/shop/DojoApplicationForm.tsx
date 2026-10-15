@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import PhoneInput from '@/components/shop/PhoneInput';
+import StateInput from '@/components/shop/StateInput';
 import SignaturePad, { type SignatureValue } from '@/components/SignaturePad';
 import { submitApplicationAction } from '@/app/membership/application/actions';
 import {
@@ -101,6 +102,8 @@ export default function DojoApplicationForm({ signedInAs }: { signedInAs: string
           ))}
         </div>
       );
+    } else if (f.type === 'state') {
+      control = <StateInput {...common} country={values.country} onChange={(e) => set(f.name, e.target.value)} />;
     } else if (f.type === 'tel') {
       control = <PhoneInput {...common} onChange={(v) => set(f.name, v)} />;
     } else {

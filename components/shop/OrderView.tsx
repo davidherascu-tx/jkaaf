@@ -1,6 +1,7 @@
 import { formatCents } from '@/lib/money';
-import { ORDER_STATUS_LABEL, type Order, type OrderItem } from '@/lib/shop';
+import { fulfillmentLabel, ORDER_STATUS_LABEL, type Order, type OrderItem } from '@/lib/shop';
 import { Badge, Card } from '@/components/shop/ui';
+import TrackingInfo from '@/components/shop/TrackingInfo';
 
 export default function OrderView({ order, items }: { order: Order; items: OrderItem[] }) {
   const hasShipping = !!order.ship_address;
@@ -26,6 +27,15 @@ export default function OrderView({ order, items }: { order: Order; items: Order
                 </p>
               ))}
               {i.recurring && <p className="text-sm font-semibold text-amber-700">Renews yearly until canceled</p>}
+              {order.status !== 'cancelled' && (
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                  <Badge
+                    value={i.fulfillment === 'pending' ? 'pending' : i.fulfillment === 'shipped' ? 'completed' : 'approved'}
+                    label={fulfillmentLabel(i.fulfillment, i.physical)}
+                  />
+                  <TrackingInfo carrier={i.carrier} tracking={i.tracking} />
+                </p>
+              )}
             </div>
             <p className="font-semibold">{formatCents(i.unit_cents * i.quantity)}</p>
           </li>

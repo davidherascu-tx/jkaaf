@@ -6,7 +6,7 @@ import { Badge, Card } from '@/components/shop/ui';
 export default async function AdminMembers() {
   const me = await getUser();
   // Pending first, then everyone else.
-  const users = (await listUsers()).sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending'));
+  const users = (await listUsers()).sort((a, b) => Number(b.status === 'pending' && b.approval_requested) - Number(a.status === 'pending' && a.approval_requested));
   return (
     <>
       <h1 className="text-3xl font-extrabold text-gray-900 mb-6">Members</h1>
@@ -35,7 +35,11 @@ export default async function AdminMembers() {
                 <td className="p-4 text-gray-700">{u.phone || '—'}</td>
                 <td className="p-4 text-gray-600">{u.created_at}</td>
                 <td className="p-4">
-                  <Badge value={u.role === 'admin' ? 'admin' : u.status} />
+                  <Badge
+                    value={u.role === 'admin' ? 'admin' : u.status}
+                    label={u.role !== 'admin' && u.status === 'pending' && !u.approval_requested ? 'Not requested' : undefined}
+                  />
+                  {u.approval_note && <span className="block text-xs text-gray-500 mt-1 max-w-56">&ldquo;{u.approval_note}&rdquo;</span>}
                 </td>
                 <td className="p-4">
                   {u.id !== me?.id && u.role !== 'admin' && (

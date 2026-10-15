@@ -4,7 +4,7 @@ import { shopStats } from '@/lib/shopAdmin';
 import { formatCents } from '@/lib/money';
 import { Badge, Card, primaryBtn, secondaryBtn } from '@/components/shop/ui';
 
-export const metadata = { title: 'Shop | Dashboard' };
+export const metadata = { title: 'Shop | Admin dashboard' };
 
 function Stat({ label, value, sub, href, alert }: { label: string; value: string | number; sub?: string; href?: string; alert?: boolean }) {
   const inner = (

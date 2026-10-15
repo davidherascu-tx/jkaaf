@@ -8,8 +8,8 @@ export const metadata = {
 export default function PoliciesPage() {
   return (
     <div className="bg-gray-50 pt-28 md:pt-40 pb-24 font-sans">
-      {/* CHANGED TO max-w-6xl FOR A WIDER PAGE */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="mb-10 border-b border-gray-200 pb-8">
           <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight">

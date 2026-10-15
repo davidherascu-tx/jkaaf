@@ -105,7 +105,7 @@ function AccountMenu() {
                 <Link href="/account" className={itemClass}>
                   Account
                 </Link>
-                <Link href="/shop/orders" className={itemClass}>
+                <Link href="/account/orders" className={itemClass}>
                   My orders
                 </Link>
                 <form

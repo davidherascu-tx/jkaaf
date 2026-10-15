@@ -3,7 +3,7 @@ import { listCustomers } from '@/lib/shopAdmin';
 import { formatCents } from '@/lib/money';
 import { Badge, Card, inputClass, primaryBtn } from '@/components/shop/ui';
 
-export const metadata = { title: 'Customers | Dashboard' };
+export const metadata = { title: 'Customers | Admin dashboard' };
 
 export default async function AdminCustomers({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams;

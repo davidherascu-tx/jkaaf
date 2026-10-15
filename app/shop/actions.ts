@@ -6,7 +6,9 @@ import { after } from "next/server";
 import { sendOrderInvoice } from "@/lib/orderEmail";
 import { getUser, getUserById } from "@/lib/auth";
 import { createAccount } from "@/lib/accounts";
+import { getAddresses, saveAddress, type Address } from "@/lib/addresses";
 import { ensureCartOwner, getCartOwner } from "@/lib/cart";
+import { normalizeUsState } from "@/lib/regions";
 import {
   addToCart,
   cartNeedsShipping,
@@ -74,16 +76,28 @@ export async function checkoutAction(
   if (!owner) return { error: "Your cart is empty." };
 
   const cart = await getCart(owner);
-  const ship = {
-    name: str(fd, "ship_name"),
-    address: str(fd, "ship_address"),
-    city: str(fd, "ship_city"),
-    state: str(fd, "ship_state"),
-    zip: str(fd, "ship_zip"),
-  };
-  if (cartNeedsShipping(cart) && Object.values(ship).some((v) => !v)) {
-    return { error: "Please complete the shipping address." };
-  }
+  const shipsHere = cartNeedsShipping(cart);
+  const phone = str(fd, "phone");
+  const pick = (p: "bill" | "ship", phone: string): Address => ({
+    name: str(fd, p + "_name"),
+    line1: str(fd, p + "_line1"),
+    city: str(fd, p + "_city"),
+    state: normalizeUsState(str(fd, p + "_state")),
+    zip: str(fd, p + "_zip"),
+    phone,
+  });
+  const isComplete = (a: Address) => !!(a.name && a.line1 && a.city && a.state && a.zip);
+
+  // Billing address is required: a signed-in customer's saved one, or the one typed in by a new customer.
+  const billing = user ? (await getAddresses(user.id)).billing : pick("bill", phone);
+  if (!billing || !isComplete(billing)) return { error: "Please complete the billing address." };
+
+  // Shipping goes to the billing address unless the customer unticked "Ship to my billing address".
+  const shipAddr = shipsHere && str(fd, "same_ship") !== "on" ? pick("ship", billing.phone) : billing;
+  if (!isComplete(shipAddr)) return { error: "Please complete the shipping address." };
+  const ship = shipsHere
+    ? { name: shipAddr.name, address: shipAddr.line1, city: shipAddr.city, state: shipAddr.state, zip: shipAddr.zip }
+    : { name: "", address: "", city: "", state: "", zip: "" };
   if (str(fd, "agree") !== "on")
     return { error: "Please confirm you will pay by check." };
 
@@ -97,11 +111,14 @@ export async function checkoutAction(
       phone: str(fd, "phone"),
       dojo: str(fd, "dojo"),
       rank: str(fd, "rank"),
-    });
+    }, true);
     if ("error" in res) return { error: res.error };
     user = await getUserById(res.id);
     if (!user)
       return { error: "Could not create your account. Please try again." };
+
+    await saveAddress(user.id, "billing", billing);
+    await saveAddress(user.id, "shipping", shipAddr);
   }
 
   const result = await placeOrder(user, ship, str(fd, "notes").slice(0, 1000));

@@ -1,6 +1,6 @@
 // Dojo Membership application: field definitions + validation, shared by the client form and the server action.
 
-export type FieldType = 'text' | 'email' | 'tel' | 'number' | 'date' | 'textarea' | 'choice' | 'select';
+export type FieldType = 'text' | 'email' | 'tel' | 'number' | 'date' | 'textarea' | 'choice' | 'select' | 'state';
 
 export interface FormField {
   name: string;
@@ -26,7 +26,7 @@ export const DOJO_SECTIONS: FormSection[] = [
     title: 'Dojo information',
     fields: [
       { name: 'dojo_name', label: 'Dojo Name', type: 'text', required: true },
-      { name: 'region_state', label: 'Region/State', type: 'text', required: true },
+      { name: 'region_state', label: 'Region/State', type: 'state', required: true },
       {
         name: 'country',
         label: 'Country',
@@ -37,7 +37,7 @@ export const DOJO_SECTIONS: FormSection[] = [
       },
       { name: 'street', label: 'Dojo Street Address', type: 'text', required: true },
       { name: 'city', label: 'City', type: 'text', required: true },
-      { name: 'state', label: 'State', type: 'text', required: true },
+      { name: 'state', label: 'State', type: 'state', required: true },
       { name: 'zip', label: 'Zip', type: 'text', required: true },
       { name: 'phone', label: 'Dojo Phone', type: 'tel', required: true },
       { name: 'fax', label: 'Fax', type: 'tel' },
@@ -68,7 +68,7 @@ export const DOJO_SECTIONS: FormSection[] = [
       { name: 'chief_instructor', label: 'Name of chief instructor', type: 'text', required: true },
       { name: 'ci_street', label: 'Chief Instructor street address', type: 'text', required: true },
       { name: 'ci_city', label: 'Chief Instructor city', type: 'text', required: true },
-      { name: 'ci_state', label: 'Chief instructor state', type: 'text', required: true },
+      { name: 'ci_state', label: 'Chief instructor state', type: 'state', required: true },
       { name: 'ci_zip', label: 'Chief instructor zip', type: 'text', required: true },
       { name: 'ci_phone', label: 'Chief instructor phone', type: 'tel', required: true },
       { name: 'ci_email', label: 'Chief Instructor Email', type: 'email', required: true },

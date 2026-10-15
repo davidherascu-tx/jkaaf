@@ -3,6 +3,8 @@ import { queryOne } from '@/lib/db';
 import { hashPassword } from '@/lib/password';
 import { adoptGuestCart } from '@/lib/cart';
 import { createSession } from '@/lib/auth';
+import { after } from 'next/server';
+import { sendActivationEmail, siteOrigin } from '@/lib/emailVerification';
 
 export interface AccountInput {
   email: string;
@@ -17,8 +19,11 @@ export interface AccountInput {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Validates, creates a pending member account, signs the user in and keeps their guest cart. */
-export async function createAccount(a: AccountInput): Promise<{ error: string } | { id: number }> {
+/**
+ * Validates and creates a pending, not-yet-activated account. Signs the user in (and keeps their guest cart)
+ * only when `signIn` is set; otherwise they must click the activation link in their email first.
+ */
+export async function createAccount(a: AccountInput, signIn = false): Promise<{ error: string } | { id: number }> {
   const email = a.email.trim().toLowerCase();
   const first = a.first_name.trim();
   const last = a.last_name.trim();
@@ -39,7 +44,10 @@ export async function createAccount(a: AccountInput): Promise<{ error: string } 
     if ((e as { code?: string }).code === '23505') return { error: 'An account with this email already exists. Please sign in instead.' };
     throw e;
   }
-  await createSession(id);
-  await adoptGuestCart(id);
+  if (signIn) {
+    await createSession(id);
+    await adoptGuestCart(id);
+  }
+  after(async () => sendActivationEmail(id, await siteOrigin()));
   return { id };
 }
