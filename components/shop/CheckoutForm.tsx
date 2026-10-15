@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useActionState, useEffect } from "react";
 import { checkoutAction, type ShopFormState } from "@/app/shop/actions";
 import { ErrorBox, Field, inputClass } from "@/components/shop/ui";
-import { STATE_TAX } from "@/lib/taxRules";
-import { CHECKOUT_FORM_ID, useCheckout } from "@/components/shop/CheckoutTotals";
+import {
+  CHECKOUT_FORM_ID,
+  useCheckout,
+} from "@/components/shop/CheckoutTotals";
 import PhoneInput from "@/components/shop/PhoneInput";
 
 const initial: ShopFormState = {};
@@ -18,7 +20,7 @@ export default function CheckoutForm({
   user: { name: string; email: string } | null;
 }) {
   const [state, action, pending] = useActionState(checkoutAction, initial);
-  const { shipState, setShipState, setPending } = useCheckout();
+  const { setPending } = useCheckout();
   useEffect(() => setPending(pending), [pending, setPending]);
   return (
     <form id={CHECKOUT_FORM_ID} action={action} className="space-y-6">
@@ -112,64 +114,54 @@ export default function CheckoutForm({
         </div>
       )}
 
-      <div className="space-y-4">
-        <h3 className="font-bold text-gray-900">
-          {needsShipping ? "Shipping address" : "Billing address"}
-        </h3>
-        <Field label="Full name" required>
-          <input
-            name="ship_name"
-            defaultValue={user?.name ?? ""}
-            autoComplete="name"
-            required
-            className={inputClass}
-          />
-        </Field>
-        <Field label="Street address" required>
-          <input
-            name="ship_address"
-            autoComplete="street-address"
-            required
-            className={inputClass}
-          />
-        </Field>
-        <div className="grid sm:grid-cols-3 gap-4">
-          <Field label="City" required>
+      {needsShipping && (
+        <div className="space-y-4">
+          <h3 className="font-bold text-gray-900">Shipping address</h3>
+          <Field label="Full name" required>
             <input
-              name="ship_city"
-              autoComplete="address-level2"
+              name="ship_name"
+              defaultValue={user?.name ?? ""}
+              autoComplete="name"
               required
               className={inputClass}
             />
           </Field>
-          <Field label="State" required>
-            <select
-              name="ship_state"
-              value={shipState}
-              onChange={(e) => setShipState(e.target.value)}
-              autoComplete="address-level1"
-              required
-              className={inputClass}
-            >
-              <option value="">Select…</option>
-              {STATE_TAX.map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name}
-                </option>
-              ))}
-              <option value="Other">Other / outside the US</option>
-            </select>
-          </Field>
-          <Field label="Zip" required>
+          <Field label="Street address" required>
             <input
-              name="ship_zip"
-              autoComplete="postal-code"
+              name="ship_address"
+              autoComplete="street-address"
               required
               className={inputClass}
             />
           </Field>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <Field label="City" required>
+              <input
+                name="ship_city"
+                autoComplete="address-level2"
+                required
+                className={inputClass}
+              />
+            </Field>
+            <Field label="State" required>
+              <input
+                name="ship_state"
+                autoComplete="address-level1"
+                required
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Zip" required>
+              <input
+                name="ship_zip"
+                autoComplete="postal-code"
+                required
+                className={inputClass}
+              />
+            </Field>
+          </div>
         </div>
-      </div>
+      )}
 
       <Field label="Order notes">
         <textarea

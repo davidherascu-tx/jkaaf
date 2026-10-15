@@ -23,7 +23,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   // Added category to the GROQ query below!
   const event: EventDetails = await client.fetch(`
-    *[_type == "event" && _id == $id][0] {
+    *[_type == "event" && _id == $id && published != false][0] {
       title,
       category, 
       startDate,

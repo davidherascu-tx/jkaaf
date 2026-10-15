@@ -1,6 +1,8 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+import { resetPassword, sendPasswordReset } from '@/lib/passwordReset';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { createSession, destroySession, replaceAllSessions, requireUser, safeNext } from '@/lib/auth';
 import { createAccount } from '@/lib/accounts';
@@ -67,4 +69,31 @@ export async function changePasswordAction(_prev: PasswordState, fd: FormData): 
 export async function logoutAction() {
   await destroySession();
   redirect('/');
+}
+
+export interface ForgotState {
+  error?: string;
+  sent?: boolean;
+}
+
+/** Always answers the same way so nobody can find out which emails have accounts. */
+export async function forgotPasswordAction(_prev: ForgotState, fd: FormData): Promise<ForgotState> {
+  const email = str(fd, 'email');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https');
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || `${proto}://${host}`;
+  await sendPasswordReset(email, origin.replace(/\/$/, ''));
+  return { sent: true };
+}
+
+export async function resetPasswordAction(token: string, _prev: FormState, fd: FormData): Promise<FormState> {
+  const password = String(fd.get('password') ?? '');
+  const confirm = String(fd.get('confirm') ?? '');
+  if (password.length < 8) return { error: 'Password must be at least 8 characters.' };
+  if (password !== confirm) return { error: 'Passwords do not match.' };
+  const err = await resetPassword(token, password);
+  if (err) return { error: err };
+  redirect('/account/login?reset=1');
 }

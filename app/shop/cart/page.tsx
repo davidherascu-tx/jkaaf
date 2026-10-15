@@ -100,7 +100,7 @@ export default async function CartPage() {
           </div>
           <Card className="!p-5 lg:sticky lg:top-32">
             <div className="flex justify-between text-xl font-extrabold mb-2">
-              <span>Subtotal</span>
+              <span>Total</span>
               <span>{formatCents(total)}</span>
             </div>
             <div className="flex justify-between text-gray-700">
@@ -112,10 +112,6 @@ export default async function CartPage() {
                   Included in item prices
                 </span>
               )}
-            </div>
-            <div className="flex justify-between text-gray-700 mt-1">
-              <span>Estimated sales tax</span>
-              <span className="font-semibold text-gray-500">---</span>
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
               {hasError ? (

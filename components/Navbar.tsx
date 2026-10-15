@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import NavAccount from '@/components/shop/NavAccount';
-import { useMe } from '@/components/shop/useMe';
 import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
@@ -11,20 +10,6 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const me = useMe();
-  const shopMenu = [
-    { name: 'Browse shop', path: '/shop' },
-    { name: me && me.cart > 0 ? `Cart (${me.cart})` : 'Cart', path: '/shop/cart' },
-    ...(me?.name
-      ? [
-          { name: 'My orders', path: '/shop/orders' },
-          { name: 'My account', path: '/account' },
-        ]
-      : [
-          { name: 'Sign in', path: '/account/login' },
-          { name: 'Create account', path: '/account/register' },
-        ]),
-  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -51,7 +36,7 @@ export default function Navbar() {
     { name: 'Dojos', path: '/dojos' },
     { name: 'News', path: '/news' },
     { name: 'Contact', path: '/contact' },
-    { name: 'Shop', path: '/shop', dropdown: shopMenu },
+    { name: 'Shop', path: '/shop' },
   ];
 
   useEffect(() => {
@@ -62,7 +47,7 @@ export default function Navbar() {
     }
   }, [isOpen]);
 
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/studio')) {
     return null;
   }
 

@@ -36,9 +36,7 @@ export default function DojoApplicationForm({ signedInAs }: { signedInAs: string
   const set = (name: string, v: string) => setValues((p) => ({ ...p, [name]: v }));
 
   function signatureString(): string {
-    if (!signature.data) return '';
-    if (signature.mode === 'type') return signature.data.trim().length > 1 ? `typed:${signature.data.trim()}` : '';
-    return signature.data;
+    return signature.data ?? '';
   }
 
   function onSubmit(e: React.FormEvent) {
@@ -49,7 +47,7 @@ export default function DojoApplicationForm({ signedInAs }: { signedInAs: string
     if (!signedInAs) {
       if (!account.first_name.trim()) errs.acc_first_name = 'Required';
       if (!account.last_name.trim()) errs.acc_last_name = 'Required';
-      if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(account.email.trim())) errs.acc_email = 'Enter a valid email';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.email.trim())) errs.acc_email = 'Enter a valid email';
       if (account.password.length < 8) errs.acc_password = 'At least 8 characters';
       if (account.password !== account.confirm) errs.acc_confirm = 'Passwords do not match';
     }
@@ -226,7 +224,7 @@ export default function DojoApplicationForm({ signedInAs }: { signedInAs: string
             <p className="text-sm font-bold text-gray-800 mb-2">
               Dojo Chief Instructor&apos;s eSignature <span className="text-red-600">*</span>
             </p>
-            <SignaturePad value={signature} onChange={setSignature} />
+            <SignaturePad value={signature} onChange={setSignature} drawOnly />
             {errors.signature && <p className="text-xs text-red-600 mt-1">{errors.signature}</p>}
           </div>
           <div className="max-w-xs">{renderField(FINAL_FIELDS[2])}</div>

@@ -81,12 +81,8 @@ export async function checkoutAction(
     state: str(fd, "ship_state"),
     zip: str(fd, "ship_zip"),
   };
-  if (Object.values(ship).some((v) => !v)) {
-    return {
-      error: cartNeedsShipping(cart)
-        ? "Please complete the shipping address."
-        : "Please complete the billing address.",
-    };
+  if (cartNeedsShipping(cart) && Object.values(ship).some((v) => !v)) {
+    return { error: "Please complete the shipping address." };
   }
   if (str(fd, "agree") !== "on")
     return { error: "Please confirm you will pay by check." };

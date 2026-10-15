@@ -1,8 +1,15 @@
 import 'server-only';
+import nodemailer from 'nodemailer';
+import path from 'node:path';
 
-// Sends mail through Resend's HTTP API (https://resend.com). No package needed.
-// Set RESEND_API_KEY and EMAIL_FROM (an address on a domain verified in Resend) in .env.local.
-// Until they are set, emails are skipped and logged so checkout keeps working.
+// Sends mail through YOUR SMTP server. Configure it in .env.local:
+//   SMTP_HOST=smtp.yourprovider.com
+//   SMTP_PORT=587            (587 = STARTTLS, 465 = SSL)
+//   SMTP_SECURE=false        (true for port 465)
+//   SMTP_USER=...  SMTP_PASS=...
+//   EMAIL_FROM="JKA/AF <orders@yourdomain.com>"
+// Optional: EMAIL_REPLY_TO, ORDER_NOTIFY_EMAIL (BCC copy of every order invoice).
+// Until SMTP_HOST and EMAIL_FROM are set, emails are skipped and logged so the shop keeps working.
 
 export interface Mail {
   to: string;
@@ -10,36 +17,66 @@ export interface Mail {
   html: string;
   text: string;
   bcc?: string;
+  attachments?: { filename: string; content: Uint8Array; contentType?: string }[];
 }
 
-export async function sendMail(mail: Mail): Promise<boolean> {
-  const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
-  if (!key || !from) {
-    console.warn(`[email] Not configured (set RESEND_API_KEY and EMAIL_FROM); skipped "${mail.subject}" to ${mail.to}`);
-    return false;
+export function emailConfig() {
+  const port = Number(process.env.SMTP_PORT || 587);
+  return {
+    host: process.env.SMTP_HOST ?? '',
+    port,
+    secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : port === 465,
+    user: process.env.SMTP_USER ?? '',
+    pass: process.env.SMTP_PASS ?? '',
+    from: process.env.EMAIL_FROM ?? '',
+    replyTo: process.env.EMAIL_REPLY_TO ?? '',
+    notify: process.env.ORDER_NOTIFY_EMAIL ?? '',
+  };
+}
+
+export const isEmailConfigured = () => {
+  const c = emailConfig();
+  return !!c.host && !!c.from;
+};
+
+function transport() {
+  const c = emailConfig();
+  return nodemailer.createTransport({
+    host: c.host,
+    port: c.port,
+    secure: c.secure,
+    auth: c.user ? { user: c.user, pass: c.pass } : undefined,
+  });
+}
+
+/** Sends one email. Returns null on success, or an error message. Never throws. */
+export async function sendMail(mail: Mail): Promise<string | null> {
+  if (!isEmailConfigured()) {
+    console.warn(`[email] SMTP not configured (set SMTP_HOST and EMAIL_FROM); skipped "${mail.subject}" to ${mail.to}`);
+    return 'Email is not configured yet.';
   }
+  const c = emailConfig();
   try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from,
-        to: [mail.to],
-        subject: mail.subject,
-        html: mail.html,
-        text: mail.text,
-        reply_to: process.env.EMAIL_REPLY_TO || undefined,
-        bcc: mail.bcc ? [mail.bcc] : undefined,
-      }),
+    await transport().sendMail({
+      from: c.from,
+      to: mail.to,
+      bcc: mail.bcc || undefined,
+      replyTo: c.replyTo || undefined,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      attachments: [
+        // Logo used by the email layout (<img src="cid:logo">).
+        { filename: 'logo.png', path: path.join(process.cwd(), 'public', 'jkaaf_logo_email.png'), cid: 'logo' },
+        ...(mail.attachments ?? []).map((a) => ({ filename: a.filename, content: Buffer.from(a.content), contentType: a.contentType })),
+      ],
     });
-    if (!res.ok) {
-      console.error(`[email] Resend rejected "${mail.subject}" (${res.status}): ${await res.text()}`);
-      return false;
-    }
-    return true;
+    return null;
   } catch (e) {
-    console.error('[email] Could not send:', e);
-    return false;
+    const msg = e instanceof Error ? e.message : 'Could not send the email.';
+    console.error(`[email] Could not send "${mail.subject}" to ${mail.to}: ${msg}`);
+    return msg;
   }
 }
+
+export { escapeHtml, simpleEmail } from '@/lib/emailTemplate';

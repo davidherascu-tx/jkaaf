@@ -1,7 +1,6 @@
 import 'server-only';
 import { query, queryOne, type DbRow, ts } from '@/lib/db';
 import { toUser, USER_COLS, type User } from '@/lib/auth';
-import { salesTaxCents } from '@/lib/tax';
 import { currentPriceCents, type Product, type ProductInput } from '@/lib/products';
 
 // ---------- Products ----------
@@ -281,8 +280,6 @@ export interface Order {
   status: 'awaiting_payment' | 'paid' | 'completed' | 'cancelled';
   payment_method: string;
   total_cents: number;
-  /** Sales tax included in total_cents. */
-  tax_cents: number;
   ship_name: string;
   ship_address: string;
   ship_city: string;
@@ -328,7 +325,6 @@ export async function placeOrder(
     total += l.priced.unitCents * l.quantity;
   }
 
-  const tax = salesTaxCents(total, ship.state);
   // One database function does stock check + order + items + empty cart atomically.
   const items = cart.map((l) => {
     const p = l.priced as PricedLine;
@@ -343,9 +339,9 @@ export async function placeOrder(
     };
   });
   try {
-    const r = await queryOne('select place_order($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10) as id', [
+    const r = await queryOne('select place_order($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb) as id', [
       user.id,
-      total + tax,
+      total,
       ship.name,
       ship.address,
       ship.city,
@@ -353,7 +349,6 @@ export async function placeOrder(
       ship.zip,
       notes,
       JSON.stringify(items),
-      tax,
     ]);
     return { orderId: Number(r!.id) };
   } catch (e) {
@@ -369,7 +364,6 @@ const toOrder = (r: Row): Order => {
     status: r.status as Order['status'],
     payment_method: r.payment_method as string,
     total_cents: r.total_cents as number,
-    tax_cents: (r.tax_cents as number) ?? 0,
     ship_name: r.ship_name as string,
     ship_address: r.ship_address as string,
     ship_city: r.ship_city as string,

@@ -12,9 +12,11 @@ export interface SignatureValue {
 interface Props {
   value: SignatureValue;
   onChange: (next: SignatureValue) => void;
+  /** Hide the Type and Upload options: the signer can only draw. */
+  drawOnly?: boolean;
 }
 
-export default function SignaturePad({ value, onChange }: Props) {
+export default function SignaturePad({ value, onChange, drawOnly = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
@@ -140,11 +142,13 @@ export default function SignaturePad({ value, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {tabBtn('draw', 'Draw')}
-        {tabBtn('type', 'Type')}
-        {tabBtn('upload', 'Upload')}
-      </div>
+      {!drawOnly && (
+        <div className="flex flex-wrap gap-2">
+          {tabBtn('draw', 'Draw')}
+          {tabBtn('type', 'Type')}
+          {tabBtn('upload', 'Upload')}
+        </div>
+      )}
 
       {value.mode === 'draw' && (
         <div>

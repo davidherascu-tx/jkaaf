@@ -83,8 +83,8 @@ export async function requireApproved(next = '/shop'): Promise<User> {
 
 export async function requireAdmin(): Promise<User> {
   const user = await getUser();
-  if (!user) redirect('/account/login?next=/shop-admin');
-  if (user.role !== 'admin') redirect('/account');
+  if (!user) redirect('/admin/login');
+  if (user.role !== 'admin') redirect('/admin/login');
   return user;
 }
 

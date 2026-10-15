@@ -1,5 +1,5 @@
 // Product types and pricing helpers (safe to import from client components).
-// Products themselves live in the database and are managed at /shop-admin/products.
+// Products themselves live in the database and are managed at /admin/shop/products.
 
 export interface Choice {
   label: string;

@@ -53,8 +53,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             Dojo Membership application
           </Link>
           {user.role === 'admin' && (
-            <Link href="/shop-admin" className={secondaryBtn}>
-              Shop admin
+            <Link href="/admin" className={secondaryBtn}>
+              Shop dashboard
             </Link>
           )}
         </div>

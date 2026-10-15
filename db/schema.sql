@@ -300,3 +300,11 @@ begin
   return v_order_id;
 end;
 $$;
+
+-- Password reset links (token stored hashed; each link works once and expires).
+create table if not exists password_resets (
+  token_hash text primary key,
+  user_id bigint not null references users (id) on delete cascade,
+  expires_at bigint not null
+);
+create index if not exists password_resets_user_idx on password_resets (user_id);

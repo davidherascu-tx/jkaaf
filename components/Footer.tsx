@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation';
 export default function Footer() {
   const pathname = usePathname();
 
-  // Hide the footer entirely if we are on the Sanity Studio admin page
-  if (pathname.startsWith('/admin')) {
+  // Hide the footer entirely if we are on the Sanity Studio page
+  if (pathname.startsWith('/studio')) {
     return null;
   }
 

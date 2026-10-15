@@ -26,10 +26,7 @@ export default async function CheckoutPage() {
 
   return (
     <PageShell wide title="Checkout">
-      <CheckoutProvider
-        subtotalCents={total}
-        needsShipping={cartNeedsShipping(cart)}
-      >
+      <CheckoutProvider subtotalCents={total}>
         <div className="grid lg:grid-cols-[minmax(0,1fr)_26rem] xl:grid-cols-[minmax(0,1fr)_30rem] gap-8">
           <div className="space-y-5">
             <Notice>
@@ -80,10 +77,6 @@ export default async function CheckoutPage() {
                     Included in item prices
                   </span>
                 )}
-              </div>
-              <div className="flex justify-between text-sm text-gray-700 mt-1">
-                <span>Subtotal</span>
-                <span className="font-semibold">{formatCents(total)}</span>
               </div>
               <CheckoutTotals />
               <PlaceOrderButton />

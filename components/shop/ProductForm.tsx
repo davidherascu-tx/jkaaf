@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
-import { saveProductAction, type ProductPayload } from '@/app/shop-admin/actions';
+import { saveProductAction, type ProductPayload } from '@/app/admin/actions';
 import { choicesToText } from '@/lib/optionsText';
 import type { Product } from '@/lib/shop';
 import { Card, ErrorBox, Field, inputClass, primaryBtn, secondaryBtn } from '@/components/shop/ui';
@@ -181,7 +181,7 @@ export default function ProductForm({ product }: { product: Product | null }) {
         <button type="submit" disabled={pending} className={primaryBtn}>
           {pending ? 'Saving…' : 'Save product'}
         </button>
-        <Link href="/shop-admin/products" className={secondaryBtn}>
+        <Link href="/admin/shop/products" className={secondaryBtn}>
           Cancel
         </Link>
       </div>

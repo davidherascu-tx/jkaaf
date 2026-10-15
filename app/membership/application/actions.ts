@@ -1,12 +1,14 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
+import { sendApplicationEmails } from '@/lib/applicationEmail';
 import { getUser, getUserById } from '@/lib/auth';
 import { createAccount } from '@/lib/accounts';
 import { createApplication } from '@/lib/shop';
 import { ALL_CLAUSES, ALL_FIELDS, isVisible, validateApplication, type Values } from '@/lib/dojoForm';
 
-const SIGNATURE_RE = /^(typed:[^]{2,100}|data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+)$/;
+const SIGNATURE_RE = /^data:image\/png;base64,[A-Za-z0-9+/=]+$/;
 
 export interface AccountValues {
   first_name: string;
@@ -42,6 +44,7 @@ export async function submitApplicationAction(
   for (const f of ALL_FIELDS) if (isVisible(f, values)) clean[f.name] = (values[f.name] ?? '').trim();
   for (const c of ALL_CLAUSES) clean[c.name] = 'yes';
 
-  await createApplication(user.id, clean, signature);
+  const applicationId = await createApplication(user.id, clean, signature);
+  after(() => sendApplicationEmails(applicationId));
   redirect('/account?applied=1');
 }

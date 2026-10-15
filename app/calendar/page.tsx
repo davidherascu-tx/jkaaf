@@ -6,14 +6,16 @@ export const revalidate = 30;
 
 export default async function CalendarPage() {
   // Fetch both Major Events and local Calendar Entries
-  const query = `*[_type in ["event", "calendarItem"]] {
+  const query = `*[_type == "calendarItem" || (_type == "event" && published != false)] {
     _id,
     title,
     startDate,
     endDate,
     "type": _type,
     "entryType": type,
-    category
+    category,
+    shortInfo,
+    schedule[]{ label, startTime, endTime }
   }`;
 
   const allItems = await client.fetch(query);

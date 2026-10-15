@@ -1,21 +1,13 @@
 import './globals.css';
-import Script from 'next/script';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import ClassicNavbar from '@/components/classic/ClassicNavbar';
-import ClassicFooter from '@/components/classic/ClassicFooter';
-import DesignVariant from '@/components/DesignVariant';
-import DesignToggle from '@/components/DesignToggle';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-jakarta',
   display: 'swap',
 });
-
-// Runs before first paint: ?design=classic|modern wins, else the saved choice, else modern.
-const designScript = `try{var q=new URLSearchParams(location.search).get('design');var d=(q==='classic'||q==='modern')?q:localStorage.getItem('design');if(q==='classic'||q==='modern')localStorage.setItem('design',q);document.documentElement.dataset.design=d==='classic'?'classic':'modern'}catch(e){document.documentElement.dataset.design='modern'}`;
 
 export const metadata = {
   title: 'JKA/AF | Japan Karate Association / American Federation',
@@ -30,11 +22,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={jakarta.variable} suppressHydrationWarning>
       <body className="bg-gray-50 text-gray-900 min-h-screen flex flex-col" suppressHydrationWarning>
-        <Script id="design-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: designScript }} />
-        <DesignVariant modern={<Navbar />} classic={<ClassicNavbar />} />
+        <Navbar />
         <main className="flex-grow flex flex-col">{children}</main>
-        <DesignVariant modern={<Footer />} classic={<ClassicFooter />} />
-        <DesignToggle />
+        <Footer />
       </body>
     </html>
   );

@@ -10,13 +10,19 @@ interface CalendarData {
   startDate: string;
   endDate?: string;
   type: 'event' | 'calendarItem';
-  category?: string; 
-  entryType?: string; 
+  category?: string;
+  entryType?: string;
+  shortInfo?: string;
+  schedule?: { label?: string; startTime?: string; endTime?: string }[];
 }
+
+const fmtDay = (ymd: string) =>
+  new Date(ymd + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
 
 // Destructure { items } to fix the 'IntrinsicAttributes' error
 export default function CalendarClient({ items }: { items: CalendarData[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selected, setSelected] = useState<CalendarData | null>(null);
 
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
@@ -78,12 +84,15 @@ export default function CalendarClient({ items }: { items: CalendarData[] }) {
                 🏆 {item.title}
               </Link>
             ) : (
-              <div 
-                key={item._id} 
-                className={`text-[10px] sm:text-xs font-semibold px-2 py-1 rounded border truncate shadow-xs ${getEntryStyles(item)}`}
+              <button
+                type="button"
+                key={item._id}
+                onClick={() => setSelected(item)}
+                className={`text-left text-[10px] sm:text-xs font-semibold px-2 py-1 rounded border truncate shadow-xs cursor-pointer hover:opacity-90 ${getEntryStyles(item)}`}
               >
+                {item.schedule?.[0]?.startTime && <span className="opacity-80">{item.schedule[0].startTime} · </span>}
                 {item.title}
-              </div>
+              </button>
             )
           ))}
         </div>
@@ -119,6 +128,46 @@ export default function CalendarClient({ items }: { items: CalendarData[] }) {
         {blanks}
         {days}
       </div>
+
+      {selected && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setSelected(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={selected.title}
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">{selected.entryType || selected.category}</p>
+            <h3 className="mt-1 text-xl font-extrabold text-gray-900">{selected.title}</h3>
+            <p className="mt-1 text-sm text-gray-600">
+              {fmtDay(selected.startDate)}
+              {selected.endDate && selected.endDate !== selected.startDate ? ` – ${fmtDay(selected.endDate)}` : ''}
+            </p>
+            {selected.shortInfo && <p className="mt-4 text-sm text-gray-700 whitespace-pre-line">{selected.shortInfo}</p>}
+            {!!selected.schedule?.length && (
+              <ul className="mt-4 divide-y divide-gray-100 rounded-xl border border-gray-200">
+                {selected.schedule.map((t, i) => (
+                  <li key={i} className="flex items-center justify-between gap-4 px-4 py-2.5 text-sm">
+                    <span className="font-bold text-gray-900">
+                      {t.startTime}
+                      {t.endTime ? ` – ${t.endTime}` : ''}
+                    </span>
+                    <span className="text-gray-600">{t.label}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              className="mt-6 w-full rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-700 cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="p-4 bg-white border-t border-gray-200 flex flex-wrap gap-4 text-xs font-bold text-gray-600">
         <div className="flex items-center gap-2"><span className="w-3 h-3 bg-blue-600 rounded"></span> Seminar</div>

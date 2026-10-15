@@ -11,7 +11,7 @@ interface SanityEvent {
 }
 
 export default async function EventsPage() {
-  const events: SanityEvent[] = await client.fetch(`*[_type == "event"] | order(startDate asc)`);
+  const events: SanityEvent[] = await client.fetch(`*[_type == "event" && published != false] | order(startDate asc)`);
 
   const formatDateRange = (start: string, end: string) => {
     if (!start) return '';

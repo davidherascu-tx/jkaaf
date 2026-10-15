@@ -2,8 +2,6 @@ import HeroSlider from '@/components/HeroSlider';
 import { client } from '@/sanity/client';
 import Link from 'next/link';
 import Image from 'next/image';
-import DesignVariant from '@/components/DesignVariant';
-import ClassicHome from '@/components/classic/ClassicHome';
 
 interface SanityEvent {
   _id: string;
@@ -20,7 +18,7 @@ export default async function Home() {
   // Fetch Event AND News simultaneously.
   const [event, newsItems]: [SanityEvent | null, any[]] = await Promise.all([
     client.fetch(
-      `*[_type == "event" && startDate >= $today] | order(startDate asc)[0]`,
+      `*[_type == "event" && published != false && startDate >= $today] | order(startDate asc)[0]`,
       { today }
     ),
     client.fetch(
@@ -43,7 +41,7 @@ export default async function Home() {
   };
 
 
-  const modern = (
+  return (
     <div className="bg-gray-50">
       <HeroSlider />
 
@@ -185,5 +183,5 @@ export default async function Home() {
     </div>
   );
 
-  return <DesignVariant modern={modern} classic={<ClassicHome event={event} newsItems={newsItems} />} />;
+
 }

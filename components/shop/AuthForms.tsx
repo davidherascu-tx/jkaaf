@@ -2,13 +2,22 @@
 
 import Link from 'next/link';
 import { useActionState } from 'react';
-import { changePasswordAction, loginAction, registerAction, type FormState, type PasswordState } from '@/app/account/actions';
+import {
+  changePasswordAction,
+  forgotPasswordAction,
+  loginAction,
+  registerAction,
+  resetPasswordAction,
+  type ForgotState,
+  type FormState,
+  type PasswordState,
+} from '@/app/account/actions';
 import { Card, ErrorBox, Field, inputClass, Notice, primaryBtn } from '@/components/shop/ui';
 import PhoneInput from '@/components/shop/PhoneInput';
 
 const initial: FormState = {};
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, showRegisterLink = true }: { next: string; showRegisterLink?: boolean }) {
   const [state, action, pending] = useActionState(loginAction, initial);
   return (
     <Card>
@@ -21,15 +30,22 @@ export function LoginForm({ next }: { next: string }) {
         <Field label="Password" required>
           <input name="password" type="password" autoComplete="current-password" required className={inputClass} />
         </Field>
+        <p className="text-sm text-right -mt-2">
+          <Link href="/account/forgot" className="font-semibold text-red-600 hover:underline">
+            Forgot password?
+          </Link>
+        </p>
         <button type="submit" disabled={pending} className={`${primaryBtn} w-full`}>
           {pending ? 'Signing in…' : 'Sign in'}
         </button>
+        {showRegisterLink && (
         <p className="text-sm text-gray-600 text-center">
           No account yet?{' '}
           <Link href="/account/register" className="font-semibold text-red-600 hover:underline">
             Create one
           </Link>
         </p>
+        )}
       </form>
     </Card>
   );
@@ -104,5 +120,63 @@ export function ChangePasswordForm() {
         {pending ? 'Saving…' : 'Change password'}
       </button>
     </form>
+  );
+}
+
+export function ForgotPasswordForm() {
+  const [state, action, pending] = useActionState<ForgotState, FormData>(forgotPasswordAction, {});
+  if (state.sent) {
+    return (
+      <Card>
+        <Notice tone="ok">
+          If an account exists for that email, we sent a link to reset your password. It expires in 1 hour. Check your spam folder if you do not see it.
+        </Notice>
+        <p className="mt-4 text-sm text-center">
+          <Link href="/account/login" className="font-semibold text-red-600 hover:underline">
+            Back to sign in
+          </Link>
+        </p>
+      </Card>
+    );
+  }
+  return (
+    <Card>
+      <form action={action} className="space-y-5">
+        {state.error && <ErrorBox>{state.error}</ErrorBox>}
+        <Field label="Email" required>
+          <input name="email" type="email" autoComplete="email" required className={inputClass} />
+        </Field>
+        <button type="submit" disabled={pending} className={`${primaryBtn} w-full`}>
+          {pending ? 'Sending…' : 'Send reset link'}
+        </button>
+        <p className="text-sm text-gray-600 text-center">
+          <Link href="/account/login" className="font-semibold text-red-600 hover:underline">
+            Back to sign in
+          </Link>
+        </p>
+      </form>
+    </Card>
+  );
+}
+
+export function ResetPasswordForm({ token }: { token: string }) {
+  const [state, action, pending] = useActionState(resetPasswordAction.bind(null, token), initial);
+  return (
+    <Card>
+      <form action={action} className="space-y-5">
+        {state.error && <ErrorBox>{state.error}</ErrorBox>}
+        <div className="grid sm:grid-cols-2 gap-5 items-end">
+          <Field label="New password" required hint="At least 8 characters.">
+            <input name="password" type="password" autoComplete="new-password" minLength={8} required className={inputClass} />
+          </Field>
+          <Field label="Confirm new password" required>
+            <input name="confirm" type="password" autoComplete="new-password" minLength={8} required className={inputClass} />
+          </Field>
+        </div>
+        <button type="submit" disabled={pending} className={`${primaryBtn} w-full`}>
+          {pending ? 'Saving…' : 'Set new password'}
+        </button>
+      </form>
+    </Card>
   );
 }
