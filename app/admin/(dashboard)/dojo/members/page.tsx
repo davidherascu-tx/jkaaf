@@ -1,9 +1,11 @@
 import { setUserStatusAction } from '@/app/admin/actions';
+import { requireAdmin } from '@/lib/auth';
 import { getUser } from '@/lib/auth';
 import { listUsers } from '@/lib/shop';
 import { Badge, Card } from '@/components/shop/ui';
 
 export default async function AdminMembers() {
+  await requireAdmin();
   const me = await getUser();
   // Pending first, then everyone else.
   const users = (await listUsers()).sort((a, b) => Number(b.status === 'pending' && b.approval_requested) - Number(a.status === 'pending' && a.approval_requested));

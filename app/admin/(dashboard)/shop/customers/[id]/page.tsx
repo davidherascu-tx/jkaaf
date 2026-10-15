@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
 import { notFound } from 'next/navigation';
 import { ORDER_STATUS_LABEL } from '@/lib/shop';
 import { getCustomer } from '@/lib/shopAdmin';
@@ -9,6 +10,7 @@ import ResetPassword from './ResetPassword';
 export const metadata = { title: 'Customer | Admin dashboard' };
 
 export default async function AdminCustomer({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const found = /^\d+$/.test(id) ? await getCustomer(Number(id)) : null;
   if (!found) notFound();
@@ -24,7 +26,7 @@ export default async function AdminCustomer({ params }: { params: Promise<{ id: 
         <Badge value={c.status} label={`Member: ${c.status}`} />
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="!p-5">
           <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Orders</p>
           <p className="mt-1 text-3xl font-extrabold">{c.orders}</p>
@@ -39,7 +41,7 @@ export default async function AdminCustomer({ params }: { params: Promise<{ id: 
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="!p-5">
           <h2 className="font-bold text-gray-900 mb-3">Contact</h2>
           <dl className="text-sm space-y-2">

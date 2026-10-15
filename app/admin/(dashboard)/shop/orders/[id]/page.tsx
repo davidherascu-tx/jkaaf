@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
 import { notFound } from 'next/navigation';
 import {
   resendInvoiceAction,
@@ -16,6 +17,7 @@ import OrderView from '@/components/shop/OrderView';
 import { Badge, Card, inputClass, primaryBtn, secondaryBtn } from '@/components/shop/ui';
 
 export default async function AdminOrder({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const found = /^\d+$/.test(id) ? await getOrder(Number(id)) : null;
   if (!found) notFound();
@@ -106,7 +108,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
               )}
               <details className="mt-3">
                 <summary className="cursor-pointer font-semibold text-red-600">{order.ship_address ? 'Edit shipping address' : 'Add shipping address'}</summary>
-                <form action={updateOrderShippingAction.bind(null, order.id)} className="mt-3 grid sm:grid-cols-2 gap-2">
+                <form action={updateOrderShippingAction.bind(null, order.id)} className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input name="name" defaultValue={order.ship_name} placeholder="Full name" required className={`${inputClass} !py-1.5 text-sm sm:col-span-2`} />
                   <input name="address" defaultValue={order.ship_address} placeholder="Street address" required className={`${inputClass} !py-1.5 text-sm sm:col-span-2`} />
                   <input name="city" defaultValue={order.ship_city} placeholder="City" required className={`${inputClass} !py-1.5 text-sm`} />
@@ -155,7 +157,7 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
                           </option>
                         ))}
                       </select>
-                      <input name="tracking" defaultValue={i.tracking} placeholder="Tracking number" className={`${inputClass} !w-56 !py-1.5 text-sm`} />
+                      <input name="tracking" defaultValue={i.tracking} placeholder="Tracking number" className={`${inputClass} sm:!w-56 !py-1.5 text-sm`} />
                     </>
                   )}
                   <button className={`${secondaryBtn} !py-1.5 text-sm`}>Update</button>

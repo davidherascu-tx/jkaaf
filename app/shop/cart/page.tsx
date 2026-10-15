@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getCartOwner } from "@/lib/cart";
 import { getCart, type PricedLine } from "@/lib/shop";
 import { formatCents } from "@/lib/money";
-import { removeCartItemAction, updateCartAction } from "@/app/shop/actions";
+import CartItemActions from "@/components/shop/CartItemActions";
 import {
   Card,
   ErrorBox,
@@ -32,7 +32,7 @@ export default async function CartPage() {
           </Link>
         </Card>
       ) : (
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_26rem] xl:grid-cols-[minmax(0,1fr)_30rem] gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_26rem] xl:grid-cols-[minmax(0,1fr)_30rem] gap-8 items-start">
           <div className="space-y-4">
             {cart.map((l) => {
               const p = l.priced;
@@ -70,28 +70,7 @@ export default async function CartPage() {
                               (p as PricedLine).unitCents * l.quantity,
                             )}
                       </p>
-                      <form
-                        action={updateCartAction.bind(null, l.id)}
-                        className="mt-2 flex items-center gap-2 justify-end"
-                      >
-                        <input
-                          name="quantity"
-                          type="number"
-                          min={0}
-                          max={99}
-                          defaultValue={l.quantity}
-                          aria-label="Quantity"
-                          className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
-                        />
-                        <button className="text-sm font-semibold text-gray-600 hover:text-red-600 cursor-pointer">
-                          Update
-                        </button>
-                      </form>
-                      <form action={removeCartItemAction.bind(null, l.id)}>
-                        <button className="mt-1 text-sm font-semibold text-red-600 hover:underline cursor-pointer">
-                          Remove
-                        </button>
-                      </form>
+                      <CartItemActions itemId={l.id} quantity={l.quantity} />
                     </div>
                   </div>
                 </Card>

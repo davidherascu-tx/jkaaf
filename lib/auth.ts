@@ -97,5 +97,6 @@ export async function requireAdmin(): Promise<User> {
 
 /** Only allow same-site relative redirects after login. */
 export function safeNext(next: unknown, fallback = '/account'): string {
-  return typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') ? next : fallback;
+  // Same-site paths only: no "//host", no "/\host" (browsers read it as "//host"), no control characters.
+  return typeof next === 'string' && /^\/(?![/\\])[^\x00-\x1f\\]*$/.test(next) ? next : fallback;
 }

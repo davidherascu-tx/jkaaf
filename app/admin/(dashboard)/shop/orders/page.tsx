@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
 import { ORDER_STATUSES, ORDER_STATUS_LABEL } from '@/lib/shop';
 import { listOrdersAdmin } from '@/lib/shopAdmin';
 import { formatCents } from '@/lib/money';
@@ -7,6 +8,7 @@ import { Badge, Card, inputClass, primaryBtn, secondaryBtn } from '@/components/
 export const metadata = { title: 'Orders | Admin dashboard' };
 
 export default async function AdminOrders({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
+  await requireAdmin();
   const { status, q } = await searchParams;
   const toShip = status === 'to_ship';
   const valid = toShip || (ORDER_STATUSES as readonly string[]).includes(status ?? '') ? status : undefined;
@@ -37,9 +39,9 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
           {tab('to_ship', 'To ship')}
           {ORDER_STATUSES.map((s) => tab(s, ORDER_STATUS_LABEL[s]))}
         </div>
-        <form className="flex gap-2" action="/admin/shop/orders">
+        <form className="flex flex-wrap gap-2" action="/admin/shop/orders">
           {valid && <input type="hidden" name="status" value={valid} />}
-          <input name="q" defaultValue={q ?? ''} placeholder="Order #, name or email" className={`${inputClass} !w-64`} />
+          <input name="q" defaultValue={q ?? ''} placeholder="Order #, name or email" className={`${inputClass} sm:!w-64`} />
           <button className={primaryBtn}>Search</button>
         </form>
       </div>

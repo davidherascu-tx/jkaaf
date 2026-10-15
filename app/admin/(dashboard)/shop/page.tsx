@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
 import { ORDER_STATUS_LABEL } from '@/lib/shop';
 import { shopStats } from '@/lib/shopAdmin';
 import { formatCents } from '@/lib/money';
@@ -18,6 +19,7 @@ function Stat({ label, value, sub, href, alert }: { label: string; value: string
 }
 
 export default async function ShopDashboard() {
+  await requireAdmin();
   const s = await shopStats();
   return (
     <div className="space-y-8">
@@ -50,7 +52,7 @@ export default async function ShopDashboard() {
         <Stat label="Customers" value={s.customers} href="/admin/shop/customers" />
       </section>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="!p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-bold text-gray-900">Recent orders</h2>

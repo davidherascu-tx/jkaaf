@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation';
+import { requireAdmin } from '@/lib/auth';
 import { getProductById } from '@/lib/shop';
 import ProductForm from '@/components/shop/ProductForm';
 
 export default async function EditProduct({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const product = /^\d+$/.test(id) ? await getProductById(Number(id)) : null;
   if (!product) notFound();

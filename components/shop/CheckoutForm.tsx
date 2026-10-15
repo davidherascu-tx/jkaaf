@@ -57,7 +57,7 @@ export default function CheckoutForm({
             We create your JKA/AF account with this order so you can track it.
             We also email you a link to activate it.
           </p>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="First name" required>
               <input
                 name="first_name"
@@ -75,7 +75,7 @@ export default function CheckoutForm({
               />
             </Field>
           </div>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Email" required>
               <input
                 name="email"
@@ -89,7 +89,7 @@ export default function CheckoutForm({
               <PhoneInput name="phone" className={inputClass} />
             </Field>
           </div>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Dojo / club">
               <input name="dojo" className={inputClass} />
             </Field>
@@ -97,7 +97,7 @@ export default function CheckoutForm({
               <input name="rank" className={inputClass} />
             </Field>
           </div>
-          <div className="grid sm:grid-cols-2 gap-4 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
             <Field label="Password" required hint="At least 8 characters.">
               <input
                 name="password"

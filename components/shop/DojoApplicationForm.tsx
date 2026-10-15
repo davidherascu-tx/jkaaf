@@ -163,7 +163,7 @@ export default function DojoApplicationForm({ signedInAs }: { signedInAs: string
           <p className="text-sm text-gray-600 mb-5">
             Your account lets you follow this application and order from the shop once it is approved.
           </p>
-          <div className="grid sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {(
               [
                 ['first_name', 'First name', 'text'],
@@ -194,7 +194,7 @@ export default function DojoApplicationForm({ signedInAs }: { signedInAs: string
             <span className="w-1.5 h-6 bg-red-600 rounded-full" />
             {s.title}
           </h2>
-          <div className="grid sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {s.fields.map((f) => {
               const el = renderField(f);
               return el && (f.type === 'textarea' ? <div key={f.name} className="sm:col-span-2">{el}</div> : el);

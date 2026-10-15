@@ -16,9 +16,9 @@ export default async function Home() {
   const today = new Date().toISOString().split('T')[0];
 
   // Fetch Event AND News simultaneously.
-  const [event, newsItems]: [SanityEvent | null, any[]] = await Promise.all([
+  const [events, newsItems]: [SanityEvent[], any[]] = await Promise.all([
     client.fetch(
-      `*[_type == "event" && published != false && startDate >= $today] | order(startDate asc)[0]`,
+      `*[_type == "event" && published != false && startDate >= $today] | order(startDate asc)[0...3]`,
       { today }
     ),
     client.fetch(
@@ -87,33 +87,38 @@ export default async function Home() {
             </Link>
           </div>
 
-          {event ? (
-            <Link
-              href={`/events/${event._id}`}
-              className="group block rounded-3xl bg-red-600 p-8 sm:p-12 lg:p-14 transition-transform duration-500 hover:-translate-y-1"
-            >
-              <div className="flex flex-wrap gap-3 mb-8">
-                <span className="px-4 py-1.5 rounded-full bg-white text-gray-900 text-sm font-bold">
-                  {formatDate(event.startDate)}
-                  {event.endDate && event.endDate !== event.startDate && ` – ${formatDate(event.endDate)}`}
-                </span>
-                {event.category && (
-                  <span className="px-4 py-1.5 rounded-full border border-white/60 text-sm font-bold">
-                    {event.category}
-                  </span>
-                )}
-              </div>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight max-w-4xl">{event.title}</h3>
-              <div className="mt-10 flex flex-wrap items-center justify-between gap-6">
-                <p className="text-lg font-medium text-white/90 flex items-center gap-3">
-                  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  {event.location}
-                </p>
-                <span className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-white text-gray-900 text-2xl transition-transform duration-500 group-hover:-rotate-45" aria-hidden>
-                  &rarr;
-                </span>
-              </div>
-            </Link>
+          {events && events.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+              {events.map((event, idx) => (
+                <Link
+                  key={event._id}
+                  href={`/events/${event._id}`}
+                  className={`group flex flex-col rounded-3xl p-7 lg:p-8 transition-transform duration-500 hover:-translate-y-1 ${
+                    idx === 0 ? 'bg-red-600' : 'bg-white/5 border border-white/15 hover:border-white/40'
+                  }`}
+                >
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    <span className="px-3.5 py-1.5 rounded-full bg-white text-gray-900 text-sm font-bold">
+                      {formatDate(event.startDate)}
+                      {event.endDate && event.endDate !== event.startDate && ` – ${formatDate(event.endDate)}`}
+                    </span>
+                    {event.category && (
+                      <span className="px-3.5 py-1.5 rounded-full border border-white/60 text-sm font-bold">{event.category}</span>
+                    )}
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-extrabold leading-snug line-clamp-3">{event.title}</h3>
+                  <div className="mt-auto pt-8 flex items-end justify-between gap-4">
+                    <p className="text-base font-medium text-white/90 flex items-start gap-2 min-w-0">
+                      <svg className="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      <span className="line-clamp-2">{event.location}</span>
+                    </p>
+                    <span className="inline-flex items-center justify-center w-11 h-11 shrink-0 rounded-full bg-white text-gray-900 text-xl transition-transform duration-500 group-hover:-rotate-45" aria-hidden>
+                      &rarr;
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
           ) : (
             <div className="rounded-3xl border border-white/15 p-12 text-lg text-white/60 text-center">
               No upcoming events scheduled.
@@ -133,7 +138,7 @@ export default async function Home() {
           </div>
 
           {newsItems && newsItems.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
               {newsItems.map((item) => (
                 <Link key={item._id} href={`/news/${item.slug}`} className="group flex flex-col">
                   <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-200">

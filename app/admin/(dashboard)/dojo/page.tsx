@@ -1,17 +1,19 @@
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
 import { adminCounts, listApplications, listUsers } from '@/lib/shop';
 import { Badge, Card } from '@/components/shop/ui';
 
 export const metadata = { title: 'Dojo & Members | Admin dashboard' };
 
 export default async function DojoOverview() {
+  await requireAdmin();
   const c = await adminCounts();
   const apps = (await listApplications()).filter((a) => a.status === 'pending').slice(0, 6);
   const members = (await listUsers('pending')).filter((u) => u.role !== 'admin').slice(0, 6);
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-extrabold text-gray-900">Dojo &amp; Members</h1>
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link href="/admin/dojo/applications">
           <Card className="!p-5 hover:border-red-300 transition-colors">
             <p className={`text-4xl font-extrabold ${c.pendingApps ? 'text-red-600' : 'text-gray-300'}`}>{c.pendingApps}</p>
@@ -26,7 +28,7 @@ export default async function DojoOverview() {
         </Link>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="!p-5">
           <h2 className="font-bold text-gray-900 mb-3">Pending applications</h2>
           {apps.length === 0 ? (

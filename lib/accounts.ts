@@ -3,6 +3,7 @@ import { queryOne } from '@/lib/db';
 import { hashPassword } from '@/lib/password';
 import { adoptGuestCart } from '@/lib/cart';
 import { createSession } from '@/lib/auth';
+import { allow, clientIp, TOO_MANY } from '@/lib/rateLimit';
 import { after } from 'next/server';
 import { sendActivationEmail, siteOrigin } from '@/lib/emailVerification';
 
@@ -28,8 +29,11 @@ export async function createAccount(a: AccountInput, signIn = false): Promise<{ 
   const first = a.first_name.trim();
   const last = a.last_name.trim();
   if (!first || !last) return { error: 'First and last name are required.' };
+  if (first.length > 80 || last.length > 80 || email.length > 254) return { error: 'That name or email address is too long.' };
   if (!EMAIL_RE.test(email)) return { error: 'Enter a valid email address.' };
   if (a.password.length < 8) return { error: 'Password must be at least 8 characters.' };
+  if (a.password.length > 200) return { error: 'Password must be at most 200 characters.' };
+  if (!(await allow('register:' + (await clientIp()), 10, 3600))) return { error: TOO_MANY };
   if (a.password !== a.confirm) return { error: 'Passwords do not match.' };
 
   let id: number;

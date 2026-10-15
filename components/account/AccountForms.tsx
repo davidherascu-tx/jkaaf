@@ -21,7 +21,7 @@ export function ProfileForm({ user }: { user: { first_name: string; last_name: s
     <form action={action} className="space-y-5">
       {state.error && <ErrorBox>{state.error}</ErrorBox>}
       {state.saved && <Notice tone="ok">Your details were saved.</Notice>}
-      <div className="grid sm:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <Field label="First name" required>
           <input name="first_name" defaultValue={user.first_name} required className={inputClass} />
         </Field>
@@ -108,7 +108,7 @@ export function AddressesForm({
         {sameAsBilling ? (
           <AddressBlock title="Billing and shipping address" a={billing} />
         ) : (
-          <div className="grid sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <AddressBlock title="Billing address" a={billing} />
             <AddressBlock title="Shipping address" a={shipping} />
           </div>

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 import { sendApplicationEmails } from '@/lib/applicationEmail';
 import { getUser } from '@/lib/auth';
+import { allow, TOO_MANY } from '@/lib/rateLimit';
 import { createApplication } from '@/lib/shop';
 import { ALL_CLAUSES, ALL_FIELDS, isVisible, validateApplication, type Values } from '@/lib/dojoForm';
 
@@ -24,6 +25,7 @@ export async function submitApplicationAction(
 ): Promise<{ error: string } | undefined> {
   const user = await getUser();
   if (!user) return { error: 'Please sign in to submit a Dojo Membership application.' };
+  if (!(await allow('dojoapp:' + user.id, 10, 3600))) return { error: TOO_MANY };
 
   const errors = validateApplication(values, signature);
   if (Object.keys(errors).length > 0 || !SIGNATURE_RE.test(signature)) {

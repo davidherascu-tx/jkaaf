@@ -56,7 +56,7 @@ export default function ProductForm({ product }: { product: Product | null }) {
     <form onSubmit={onSubmit} className="space-y-6">
       {error && <ErrorBox>{error}</ErrorBox>}
       <Card className="space-y-5">
-        <div className="grid sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <Field label="Name" required>
             <input value={v.name} onChange={(e) => set('name', e.target.value)} required className={inputClass} />
           </Field>
@@ -67,7 +67,7 @@ export default function ProductForm({ product }: { product: Product | null }) {
         <Field label="Description">
           <textarea value={v.description} onChange={(e) => set('description', e.target.value)} rows={3} className={inputClass} />
         </Field>
-        <div className="grid sm:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
           <Field label="Price (USD)" required>
             <input value={v.price} onChange={(e) => set('price', e.target.value)} inputMode="decimal" required className={inputClass} />
           </Field>
@@ -81,7 +81,7 @@ export default function ProductForm({ product }: { product: Product | null }) {
             <input value={v.sort} onChange={(e) => set('sort', e.target.value)} inputMode="numeric" className={inputClass} />
           </Field>
         </div>
-        <div className="grid sm:grid-cols-2 gap-5 rounded-xl bg-red-50/50 border border-red-100 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 rounded-xl bg-red-50/50 border border-red-100 p-4">
           <Field label="Sale price (USD)" hint="Leave blank for no sale.">
             <input value={v.sale_price} onChange={(e) => set('sale_price', e.target.value)} inputMode="decimal" className={inputClass} />
           </Field>
@@ -137,7 +137,7 @@ export default function ProductForm({ product }: { product: Product | null }) {
         {v.options.length === 0 && <p className="text-sm text-gray-500">No options. Customers just choose a quantity.</p>}
         {v.options.map((o, i) => (
           <div key={i} className="border border-gray-200 rounded-xl p-4 space-y-4">
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field label="Label">
                 <input value={o.label} onChange={(e) => setOpt(i, { label: e.target.value })} className={inputClass} />
               </Field>

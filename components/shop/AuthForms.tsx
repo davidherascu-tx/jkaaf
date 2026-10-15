@@ -65,7 +65,7 @@ export function RegisterForm() {
     <Card>
       <form action={action} className="space-y-5">
         {state.error && <ErrorBox>{state.error}</ErrorBox>}
-        <div className="grid sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <Field label="First name" required>
             <input name="first_name" autoComplete="given-name" required className={inputClass} />
           </Field>
@@ -76,7 +76,7 @@ export function RegisterForm() {
         <Field label="Email" required>
           <input name="email" type="email" autoComplete="email" required className={inputClass} />
         </Field>
-        <div className="grid sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <Field label="Phone">
             <PhoneInput name="phone" className={inputClass} />
           </Field>
@@ -87,7 +87,7 @@ export function RegisterForm() {
         <Field label="Rank" hint="Helps us verify your membership.">
           <input name="rank" className={inputClass} />
         </Field>
-        <div className="grid sm:grid-cols-2 gap-5 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 items-end">
           <Field label="Password" required hint="At least 8 characters.">
             <input name="password" type="password" autoComplete="new-password" minLength={8} required className={inputClass} />
           </Field>
@@ -173,7 +173,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
     <Card>
       <form action={action} className="space-y-5">
         {state.error && <ErrorBox>{state.error}</ErrorBox>}
-        <div className="grid sm:grid-cols-2 gap-5 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 items-end">
           <Field label="New password" required hint="At least 8 characters.">
             <input name="password" type="password" autoComplete="new-password" minLength={8} required className={inputClass} />
           </Field>

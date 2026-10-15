@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { resetPassword, sendPasswordReset } from '@/lib/passwordReset';
 import { hashPassword, verifyPassword } from '@/lib/password';
-import { createSession, destroySession, getUser, replaceAllSessions, requireUser, safeNext } from '@/lib/auth';
+import { createSession, destroySession, replaceAllSessions, requireUser, safeNext } from '@/lib/auth';
 import { createAccount } from '@/lib/accounts';
 import { cancelSubscription, findLoginUser, getPasswordHash, setPasswordHash } from '@/lib/shop';
 import { adoptGuestCart } from '@/lib/cart';
@@ -22,6 +22,7 @@ import {
   sendWelcomeEmail,
 } from '@/lib/customerEmails';
 import { activateAccount, resendActivation, siteOrigin } from '@/lib/emailVerification';
+import { allow, clientIp, TOO_MANY } from '@/lib/rateLimit';
 
 export interface FormState {
   error?: string;
@@ -29,6 +30,9 @@ export interface FormState {
 }
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
+
+// A valid hash of a random password, checked when the email is unknown so login takes the same time either way.
+const DUMMY_HASH = hashPassword('not-a-real-password-' + Math.random());
 
 export async function registerAction(_prev: FormState, fd: FormData): Promise<FormState> {
   const res = await createAccount({
@@ -48,10 +52,15 @@ export async function registerAction(_prev: FormState, fd: FormData): Promise<Fo
 export async function loginAction(_prev: FormState, fd: FormData): Promise<FormState> {
   const email = str(fd, 'email').toLowerCase();
   const password = String(fd.get('password') ?? '');
+  if (password.length > 200) return { error: 'Incorrect email or password.' };
+  const ip = await clientIp();
+  if (!(await allow(`login:${ip}:${email}`, 8, 900)) || !(await allow(`login-ip:${ip}`, 40, 900))) return { error: TOO_MANY };
   const row = await findLoginUser(email);
 
-  // Same message for unknown email and wrong password.
-  if (!row || !verifyPassword(password, row.password_hash)) {
+  // Same message and same work for unknown email and wrong password (so timing does not reveal which emails exist).
+  const stored = row?.password_hash ?? DUMMY_HASH;
+  const ok = verifyPassword(password, stored);
+  if (!row || !ok) {
     return { error: 'Incorrect email or password.' };
   }
   if (!row.email_verified && row.role !== 'admin') {
@@ -73,8 +82,10 @@ export async function changePasswordAction(_prev: PasswordState, fd: FormData): 
   const next = String(fd.get('next_password') ?? '');
   const confirm = String(fd.get('confirm') ?? '');
 
+  if (!(await allow('chgpw:' + user.id, 10, 900))) return { error: TOO_MANY };
   const hash = await getPasswordHash(user.id);
   if (!hash || !verifyPassword(current, hash)) return { error: 'Your current password is incorrect.' };
+  if (next.length > 200) return { error: 'The new password must be at most 200 characters.' };
   if (next.length < 8) return { error: 'The new password must be at least 8 characters.' };
   if (next !== confirm) return { error: 'The new passwords do not match.' };
   if (next === current) return { error: 'Choose a password different from your current one.' };
@@ -85,17 +96,10 @@ export async function changePasswordAction(_prev: PasswordState, fd: FormData): 
   return { done: true };
 }
 
-/** Sign out: customers go to the sign-in screen, admins to the admin dashboard login. */
+/** Sign out (customers and admins): back to the normal sign-in screen. */
 export async function logoutAction() {
-  const user = await getUser();
   await destroySession();
-  redirect(user?.role === 'admin' ? '/admin/login' : '/account/login');
-}
-
-/** Admin sign out: back to the admin dashboard sign-in. */
-export async function adminLogoutAction() {
-  await destroySession();
-  redirect('/admin/login');
+  redirect('/account/login');
 }
 
 export interface ForgotState {
@@ -107,6 +111,9 @@ export interface ForgotState {
 export async function forgotPasswordAction(_prev: ForgotState, fd: FormData): Promise<ForgotState> {
   const email = str(fd, 'email');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
+  // Same answer when limited, so nothing is revealed; the email is simply not sent.
+  const ip = await clientIp();
+  if (!(await allow('forgot-ip:' + ip, 10, 3600)) || !(await allow('forgot:' + email.toLowerCase(), 3, 3600))) return { sent: true };
   await sendPasswordReset(email, await siteOrigin());
   return { sent: true };
 }
@@ -115,6 +122,8 @@ export async function forgotPasswordAction(_prev: ForgotState, fd: FormData): Pr
 export async function resendActivationAction(_prev: ForgotState, fd: FormData): Promise<ForgotState> {
   const email = str(fd, 'email');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
+  const ip = await clientIp();
+  if (!(await allow('resend-ip:' + ip, 10, 3600)) || !(await allow('resend:' + email.toLowerCase(), 3, 3600))) return { sent: true };
   await resendActivation(email, await siteOrigin());
   return { sent: true };
 }
@@ -129,7 +138,9 @@ export async function resetPasswordAction(token: string, _prev: FormState, fd: F
   const password = String(fd.get('password') ?? '');
   const confirm = String(fd.get('confirm') ?? '');
   if (password.length < 8) return { error: 'Password must be at least 8 characters.' };
+  if (password.length > 200) return { error: 'Password must be at most 200 characters.' };
   if (password !== confirm) return { error: 'Passwords do not match.' };
+  if (!(await allow('reset-ip:' + (await clientIp()), 20, 3600))) return { error: TOO_MANY };
   const err = await resetPassword(token, password);
   if (err) return { error: err };
   redirect('/account/login?reset=1');
@@ -166,6 +177,7 @@ export async function changeEmailAction(_prev: SaveState, fd: FormData): Promise
   const email = str(fd, 'new_email').toLowerCase();
   if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
   if (email === user.email.toLowerCase()) return { error: 'That is already your email address.' };
+  if (!(await allow('chgemail:' + user.id, 5, 3600))) return { error: TOO_MANY };
   const hash = await getPasswordHash(user.id);
   if (!hash || !verifyPassword(String(fd.get('password') ?? ''), hash)) return { error: 'Your password is incorrect.' };
   const taken = await queryOne('select 1 as t from users where (lower(email) = $1 or lower(pending_email) = $1) and id <> $2', [email, user.id]);
@@ -219,6 +231,7 @@ export async function cancelSubscriptionAction(itemId: number) {
 export async function requestApprovalAction(_prev: SaveState, fd: FormData): Promise<SaveState> {
   const user = await requireUser('/account/membership');
   if (user.status === 'approved') return { error: 'Your membership is already approved.' };
+  if (!(await allow('reqapproval:' + user.id, 5, 3600))) return { error: TOO_MANY };
   const dojo = str(fd, 'dojo').slice(0, 120);
   const rank = str(fd, 'rank').slice(0, 80);
   if (!dojo || !rank) return { error: 'Please enter your dojo and rank so we can verify your membership.' };

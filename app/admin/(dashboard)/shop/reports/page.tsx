@@ -1,4 +1,5 @@
 import { salesByMonth, salesByProduct } from '@/lib/shopAdmin';
+import { requireAdmin } from '@/lib/auth';
 import { formatCents } from '@/lib/money';
 import { Card, secondaryBtn } from '@/components/shop/ui';
 
@@ -7,6 +8,7 @@ export const metadata = { title: 'Reports | Admin dashboard' };
 const monthLabel = (m: string) => new Date(`${m}-01T12:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
 export default async function AdminReports() {
+  await requireAdmin();
   const [months, products] = await Promise.all([salesByMonth(12), salesByProduct()]);
   const max = Math.max(1, ...months.map((m) => m.cents));
   const total = months.reduce((s, m) => s + m.cents, 0);

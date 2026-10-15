@@ -16,7 +16,7 @@ function Tracker({ status }: { status: Order['status'] }) {
   if (status === 'cancelled') return <p className="text-sm font-semibold text-gray-500">This order was cancelled.</p>;
   const at = STEPS.findIndex((s) => s.status === status);
   return (
-    <ol className="flex items-center gap-2 text-xs font-semibold" aria-label="Order progress">
+    <ol className="flex flex-wrap items-center gap-2 text-xs font-semibold" aria-label="Order progress">
       {STEPS.map((s, i) => (
         <li key={s.status} className="flex items-center gap-2">
           <span className={`flex items-center gap-1.5 ${i <= at ? 'text-green-700' : 'text-gray-400'}`}>

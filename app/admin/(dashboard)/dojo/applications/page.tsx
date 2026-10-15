@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
 import { listApplications } from '@/lib/shop';
 import { Badge, Card } from '@/components/shop/ui';
 
 export default async function AdminApplications() {
+  await requireAdmin();
   const apps = await listApplications();
   return (
     <>

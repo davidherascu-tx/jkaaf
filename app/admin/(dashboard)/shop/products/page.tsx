@@ -1,10 +1,12 @@
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
 import { deleteProductAction, setStockAction, toggleProductAction } from '@/app/admin/actions';
 import { isOnSale, listProducts } from '@/lib/shop';
 import { formatCents } from '@/lib/money';
 import { Badge, Card, primaryBtn } from '@/components/shop/ui';
 
 export default async function AdminProducts() {
+  await requireAdmin();
   const products = await listProducts(true);
   return (
     <>

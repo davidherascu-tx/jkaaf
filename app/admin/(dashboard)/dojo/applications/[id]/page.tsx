@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
 import { notFound } from 'next/navigation';
 import { reviewApplicationAction } from '@/app/admin/actions';
 import { getApplication } from '@/lib/shop';
@@ -6,6 +7,7 @@ import { ALL_CLAUSES, ALL_FIELDS } from '@/lib/dojoForm';
 import { Badge, Card, inputClass, primaryBtn, secondaryBtn } from '@/components/shop/ui';
 
 export default async function AdminApplication({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const app = /^\d+$/.test(id) ? await getApplication(Number(id)) : null;
   if (!app) notFound();
@@ -29,7 +31,7 @@ export default async function AdminApplication({ params }: { params: Promise<{ i
         </div>
         <dl className="divide-y divide-gray-100 text-sm">
           {ALL_FIELDS.filter((f) => app.data[f.name]).map((f) => (
-            <div key={f.name} className="py-2.5 grid sm:grid-cols-3 gap-1 sm:gap-4">
+            <div key={f.name} className="py-2.5 grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4">
               <dt className="text-gray-500 sm:col-span-1">{f.label}</dt>
               <dd className="sm:col-span-2 font-medium text-gray-900 whitespace-pre-line">{app.data[f.name]}</dd>
             </div>

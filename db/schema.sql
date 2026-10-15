@@ -370,3 +370,10 @@ alter table order_items add column if not exists carrier text not null default '
 update orders set status = 'completed'
  where status = 'paid' and exists (select 1 from order_items where order_id = orders.id)
    and not exists (select 1 from order_items where order_id = orders.id and fulfillment = 'pending');
+
+-- Attempt counters for rate limiting (sign in, sign up, password reset, ...).
+create table if not exists rate_limits (
+  key text primary key,
+  count integer not null,
+  reset_at bigint not null
+);

@@ -32,7 +32,7 @@ export default async function CheckoutPage() {
   return (
     <PageShell wide title="Checkout">
       <CheckoutProvider subtotalCents={total}>
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_26rem] xl:grid-cols-[minmax(0,1fr)_30rem] gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_26rem] xl:grid-cols-[minmax(0,1fr)_30rem] gap-8">
           <div className="space-y-5">
             <Notice>
               Payment method: <strong>check</strong>. After placing your order

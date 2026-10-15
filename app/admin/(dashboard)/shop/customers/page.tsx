@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
 import { listCustomers } from '@/lib/shopAdmin';
 import { formatCents } from '@/lib/money';
 import { Badge, Card, inputClass, primaryBtn } from '@/components/shop/ui';
@@ -6,14 +7,15 @@ import { Badge, Card, inputClass, primaryBtn } from '@/components/shop/ui';
 export const metadata = { title: 'Customers | Admin dashboard' };
 
 export default async function AdminCustomers({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  await requireAdmin();
   const { q } = await searchParams;
   const customers = await listCustomers(q);
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-3xl font-extrabold text-gray-900">Customers</h1>
-        <form className="flex gap-2" action="/admin/shop/customers">
-          <input name="q" defaultValue={q ?? ''} placeholder="Name, email or phone" className={`${inputClass} !w-64`} />
+        <form className="flex flex-wrap gap-2" action="/admin/shop/customers">
+          <input name="q" defaultValue={q ?? ''} placeholder="Name, email or phone" className={`${inputClass} sm:!w-64`} />
           <button className={primaryBtn}>Search</button>
         </form>
       </div>

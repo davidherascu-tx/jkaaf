@@ -28,7 +28,7 @@ export default function AddressFields({
       <Field label="Street address" required>
         <input name={`${prefix}_line1`} defaultValue={defaults?.line1} autoComplete={ac('street-address')} required className={inputClass} />
       </Field>
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Field label="City" required>
           <input name={`${prefix}_city`} defaultValue={defaults?.city} autoComplete={ac('address-level2')} required className={inputClass} />
         </Field>

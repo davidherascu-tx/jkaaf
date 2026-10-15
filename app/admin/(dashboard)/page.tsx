@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
 import { adminCounts } from '@/lib/shop';
 import { Card } from '@/components/shop/ui';
 
 export default async function AdminHome() {
+  await requireAdmin();
   const c = await adminCounts();
   const areas = [
     {
@@ -28,7 +30,7 @@ export default async function AdminHome() {
     <>
       <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Dashboard</h1>
       <p className="text-gray-600 mb-8">Choose what you want to manage.</p>
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {areas.map((a) => (
           <Link key={a.href} href={a.href} className="group">
             <Card className="!p-7 h-full group-hover:border-red-300 transition-colors">

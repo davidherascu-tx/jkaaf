@@ -47,7 +47,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
 
       <MembershipCard user={user} compact />
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Total orders', value: allOrders.length },
           { label: 'Open orders', value: open },
@@ -104,7 +104,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         {sameAddress(addresses.billing, addresses.shipping) ? (
           <AddressSummary title="Billing and shipping address" a={addresses.billing} />
         ) : (
-          <div className="grid sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <AddressSummary title="Billing" a={addresses.billing} />
             <AddressSummary title="Shipping" a={addresses.shipping} />
           </div>
@@ -118,11 +118,6 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         <Link href="/membership/application" className={secondaryBtn}>
           Join with your dojo
         </Link>
-        {user.role === 'admin' && (
-          <Link href="/admin" className={secondaryBtn}>
-            Admin dashboard
-          </Link>
-        )}
       </div>
     </>
   );
