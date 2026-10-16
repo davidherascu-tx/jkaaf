@@ -6,6 +6,7 @@ import { emailButton, emailLayout, emailNote, escapeHtml } from '@/lib/emailTemp
 import { trackingUrl } from '@/lib/carriers';
 import { fulfillmentLabel, getOrder } from '@/lib/shop';
 import { formatCents } from '@/lib/money';
+import { buildInvoicePdf } from '@/lib/invoicePdf';
 import { isExpired, timeLeftText, validThroughText } from '@/lib/membership';
 
 const link = async (path: string) => (await siteUrl()) + path;
@@ -20,6 +21,7 @@ interface Content {
   /** Trusted HTML shown in a highlighted box under the text. */
   noteHtml?: string;
   noteText?: string;
+  attachments?: { filename: string; content: Uint8Array; contentType?: string }[];
 }
 
 /** Sends one branded customer email. Never throws: a mail problem must not break the action that triggered it. */
@@ -31,7 +33,7 @@ async function send(c: Content): Promise<void> {
       ${url ? emailButton(url, c.button!.label) : ''}`;
     const html = emailLayout({ title: c.title, preheader: c.lines[0], body });
     const text = [...c.lines, ...(c.noteText ? ['', c.noteText] : []), ...(url ? ['', `${c.button!.label}: ${url}`] : [])].join('\n');
-    const err = await sendMail({ to: c.to, subject: c.subject, html, text });
+    const err = await sendMail({ to: c.to, subject: c.subject, html, text, attachments: c.attachments });
     if (err) console.error(`[email] "${c.subject}" not sent:`, err);
   } catch (e) {
     console.error(`[email] "${c.subject}" failed:`, e);
@@ -146,19 +148,37 @@ async function orderContext(orderId: number) {
 
 const orderButton = (id: number) => ({ label: `View order #${id}`, path: `/shop/orders/${id}` });
 
-export async function sendPaymentReceivedEmail(orderId: number): Promise<void> {
+/** `preview` sends a copy to another address with "[TEST]" in the subject (to see how the email looks). */
+export async function sendPaymentReceivedEmail(orderId: number, preview?: { to: string }): Promise<void> {
   const o = await orderContext(orderId);
   if (!o) return;
+  // The invoice, now stamped PAID, so the customer has it for their records. If it cannot be built the email still goes out.
+  let attachments: Content['attachments'];
+  try {
+    attachments = [
+      {
+        filename: `jkaaf-invoice-order-${o.order.id}-paid.pdf`,
+        content: await buildInvoicePdf(o.order, o.items),
+        contentType: 'application/pdf',
+      },
+    ];
+  } catch (e) {
+    console.error(`[email] could not build the PAID invoice for order ${o.order.id}:`, e);
+  }
   await send({
-    to: o.to,
-    subject: `Payment received for order #${o.order.id}`,
+    to: preview?.to ?? o.to,
+    subject: `${preview ? '[TEST] ' : ''}Payment received for order #${o.order.id}`,
     title: 'Payment received',
     lines: [
       `Hello ${o.name},`,
       `Thank you! We received your payment of ${formatCents(o.order.total_cents)} for order #${o.order.id}.`,
+      attachments
+        ? 'Your invoice, stamped PAID, is attached to this email for your records.'
+        : 'You can download your invoice from your order page.',
       'We are now processing your order. You will get another email when items ship or are completed.',
     ],
     button: orderButton(o.order.id),
+    attachments,
   });
 }
 

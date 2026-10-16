@@ -1,12 +1,13 @@
 import 'server-only';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { query } from '@/lib/db';
 import { getAddresses } from '@/lib/addresses';
 import { formatCents } from '@/lib/money';
 import { CONTACT_PHONE, contactEmail } from '@/lib/contact';
 import { METHOD_LABEL } from '@/lib/payments/config';
-import { fulfillmentLabel, ORDER_STATUS_LABEL, type Order, type OrderItem } from '@/lib/shop';
+import { fulfillmentLabel, type Order, type OrderItem } from '@/lib/shop';
 
 const W = 612;
 const H = 792;
@@ -90,13 +91,34 @@ export async function buildInvoicePdf(order: Order, items: OrderItem[]): Promise
   text(`Date: ${date}`, M, y - 16, 10, regular, MUTED);
   text(`Payment method: ${METHOD_LABEL[order.payment_method] ?? order.payment_method}`, M, y - 30, 10, regular, MUTED);
   if (paid) {
-    right('PAID', W - M, y - 2, 18, bold, GREEN);
-    right(ORDER_STATUS_LABEL[order.status], W - M, y - 18, 10, regular, MUTED);
+    // A tilted stamp with a double border, like an ink stamp: PAID (or REFUNDED once everything was sent back).
+    const refunded = (order.refunded_cents ?? 0) >= order.total_cents;
+    const label = refunded ? 'REFUNDED' : 'PAID';
+    const color = refunded ? MUTED : GREEN;
+    const size = 26;
+    const boxW = bold.widthOfTextAtSize(label, size) + 30;
+    const boxH = 46;
+    const tilt = 8;
+    const rad = (tilt * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const x0 = W - M - boxW - 6;
+    const y0 = y - 44;
+    // Everything is rotated around the box's lower-left corner, so inner pieces are moved by the same rotation.
+    const at = (dx: number, dy: number) => ({ x: x0 + dx * cos - dy * sin, y: y0 + dx * sin + dy * cos });
+    page.drawRectangle({ x: x0, y: y0, width: boxW, height: boxH, borderColor: color, borderWidth: 3, rotate: degrees(tilt) });
+    page.drawRectangle({ ...at(5, 5), width: boxW - 10, height: boxH - 10, borderColor: color, borderWidth: 1, rotate: degrees(tilt) });
+    page.drawText(label, { ...at(15, 13), size, font: bold, color, rotate: degrees(tilt) });
+    const paidAt = (await query('select max(created_at) as d from payments where order_id = $1', [order.id]))[0]?.d as Date | null | undefined;
+    if (paidAt) {
+      const when = new Date(paidAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+      right(`${refunded ? 'Refunded' : 'Payment received'} ${when}`, W - M, y0 - 14, 9, regular, MUTED);
+    }
   } else {
     right('AMOUNT DUE', W - M, y, 9, bold, MUTED);
     right(formatCents(order.total_cents), W - M, y - 20, 18, bold, INK);
   }
-  y -= 58;
+  y -= paid ? 70 : 58;
 
   // Bill to / Ship to
   const billing = (await getAddresses(order.user_id)).billing;
