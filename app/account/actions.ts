@@ -106,6 +106,9 @@ export async function logoutAction() {
 export interface ForgotState {
   error?: string;
   sent?: boolean;
+  /** Activation page only: nobody signed up with that email, or the account is already active. */
+  notFound?: boolean;
+  alreadyActive?: boolean;
 }
 
 /** Always answers the same way so nobody can find out which emails have accounts. */
@@ -119,13 +122,15 @@ export async function forgotPasswordAction(_prev: ForgotState, fd: FormData): Pr
   return { sent: true };
 }
 
-/** Sends a fresh activation link. Answers the same way whether or not the email has an unverified account. */
+/** Sends a fresh activation link, and says so plainly when there is no account for that email or it is already active. */
 export async function resendActivationAction(_prev: ForgotState, fd: FormData): Promise<ForgotState> {
   const email = str(fd, 'email');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
   const ip = await clientIp();
-  if (!(await allow('resend-ip:' + ip, 10, 3600)) || !(await allow('resend:' + email.toLowerCase(), 3, 3600))) return { sent: true };
-  await resendActivation(email, await siteOrigin());
+  if (!(await allow('resend-ip:' + ip, 10, 3600)) || !(await allow('resend:' + email.toLowerCase(), 3, 3600))) return { error: TOO_MANY };
+  const result = await resendActivation(email, await siteOrigin());
+  if (result === 'not_found') return { notFound: true };
+  if (result === 'already_active') return { alreadyActive: true };
   return { sent: true };
 }
 

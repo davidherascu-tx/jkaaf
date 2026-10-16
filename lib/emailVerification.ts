@@ -49,10 +49,16 @@ export async function sendActivationEmail(userId: number, origin: string): Promi
   }
 }
 
-/** Emails a new activation link to this address if it belongs to an unverified account. Silent otherwise. */
-export async function resendActivation(email: string, origin: string): Promise<void> {
-  const u = await queryOne('select id from users where lower(email) = $1 and email_verified_at is null', [email.trim().toLowerCase()]);
-  if (u) await sendActivationEmail(u.id as number, origin);
+/**
+ * Emails a new activation link when this address belongs to an account that is not activated yet.
+ * Says what happened so the page can tell the person: sent, no such account, or already activated.
+ */
+export async function resendActivation(email: string, origin: string): Promise<'sent' | 'not_found' | 'already_active'> {
+  const u = await queryOne('select id, email_verified_at from users where lower(email) = $1', [email.trim().toLowerCase()]);
+  if (!u) return 'not_found';
+  if (u.email_verified_at) return 'already_active';
+  await sendActivationEmail(u.id as number, origin);
+  return 'sent';
 }
 
 export async function activationTokenValid(token: string): Promise<boolean> {

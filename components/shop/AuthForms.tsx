@@ -202,7 +202,14 @@ export function ResendActivationForm() {
   if (state.sent) {
     return (
       <Card>
-        <Notice tone="ok">If that email has an account waiting to be activated, a new link is on its way. Check your inbox.</Notice>
+        <Notice tone="ok">
+          <strong>Done.</strong> We sent a new activation link to your email. Check your inbox and your spam folder.
+        </Notice>
+        <p className="mt-4 text-sm text-center">
+          <Link href="/account/login" className="font-semibold text-red-600 hover:underline">
+            Back to sign in
+          </Link>
+        </p>
       </Card>
     );
   }
@@ -210,6 +217,32 @@ export function ResendActivationForm() {
     <Card>
       <form action={action} className="space-y-5">
         {state.error && <ErrorBox>{state.error}</ErrorBox>}
+        {state.notFound && (
+          <Notice tone="warn">
+            <p className="font-bold">We can&apos;t find an account with that email.</p>
+            <p className="mt-1">
+              You are not signed up yet, or the email is typed differently.{' '}
+              <Link href="/account/register" className="font-bold underline">
+                Create an account
+              </Link>
+            </p>
+          </Notice>
+        )}
+        {state.alreadyActive && (
+          <Notice tone="ok">
+            <p className="font-bold">That account is already activated.</p>
+            <p className="mt-1">
+              <Link href="/account/login" className="font-bold underline">
+                Sign in
+              </Link>{' '}
+              or{' '}
+              <Link href="/account/forgot" className="font-bold underline">
+                reset your password
+              </Link>{' '}
+              if you forgot it.
+            </p>
+          </Notice>
+        )}
         <Field label="Email" required>
           <input name="email" type="email" autoComplete="email" required className={inputClass} />
         </Field>
