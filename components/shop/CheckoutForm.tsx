@@ -17,19 +17,23 @@ const initial: ShopFormState = {};
 export default function CheckoutForm({
   needsShipping,
   user,
+  methods,
   billing,
   shipping,
   sameAsBilling,
 }: {
   needsShipping: boolean;
   user: { name: string; email: string } | null;
+  /** Payment methods switched on right now (check is always there). */
+  methods: { id: string; label: string }[];
   billing: Address | null;
   shipping: Address | null;
   sameAsBilling: boolean;
 }) {
   const [state, action, pending] = useActionState(checkoutAction, initial);
   const { setPending } = useCheckout();
-  const [sameShip, setSameShip] = useState(user ? sameAsBilling : true);
+  const [sameShip, setSameShip] = useState(!shipping || sameAsBilling);
+  const [method, setMethod] = useState(methods[0]?.id ?? "check");
   useEffect(() => setPending(pending), [pending, setPending]);
   return (
     <form id={CHECKOUT_FORM_ID} action={action} className="space-y-6">
@@ -164,6 +168,31 @@ export default function CheckoutForm({
         </div>
       )}
 
+      {methods.length > 1 && (
+        <fieldset className="space-y-2">
+          <legend className="font-bold text-gray-900 mb-1">Payment method</legend>
+          {methods.map((m) => (
+            <label
+              key={m.id}
+              className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${
+                method === m.id ? "border-red-500 bg-red-50" : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <input
+                type="radio"
+                name="payment_method"
+                value={m.id}
+                checked={method === m.id}
+                onChange={() => setMethod(m.id)}
+                className="h-4 w-4 accent-red-600"
+              />
+              <span className="font-semibold text-gray-900">{m.label}</span>
+            </label>
+          ))}
+        </fieldset>
+      )}
+      {methods.length <= 1 && <input type="hidden" name="payment_method" value="check" />}
+
       <Field label="Order notes">
         <textarea
           name="notes"
@@ -172,18 +201,19 @@ export default function CheckoutForm({
           className={inputClass}
         />
       </Field>
-      <label className="flex items-start gap-3 text-sm text-gray-700">
-        <input
-          type="checkbox"
-          name="agree"
-          required
-          className="mt-1 h-4 w-4 accent-red-600"
-        />
-        <span>
-          I will pay for this order by check. My order is held until the check
-          is received.
-        </span>
-      </label>
+      {method === "check" ? (
+        <label className="flex items-start gap-3 text-sm text-gray-700">
+          <input type="checkbox" name="agree" required className="mt-1 h-4 w-4 accent-red-600" />
+          <span>
+            I will pay for this order by check. My order is held until the check
+            is received.
+          </span>
+        </label>
+      ) : (
+        <p className="text-sm text-gray-600">
+          After you place the order you go to a secure payment page. Your order is processed as soon as the payment is confirmed.
+        </p>
+      )}
     </form>
   );
 }

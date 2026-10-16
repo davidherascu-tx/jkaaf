@@ -1,6 +1,8 @@
 import { formatCents } from '@/lib/money';
 import { fulfillmentLabel, ORDER_STATUS_LABEL, type Order, type OrderItem } from '@/lib/shop';
 import { Badge, Card } from '@/components/shop/ui';
+import { METHOD_SHORT } from '@/lib/payments/config';
+import { dateOnlyText, isExpired, membershipYear, timeLeftText, validThroughText } from '@/lib/membership';
 import TrackingInfo from '@/components/shop/TrackingInfo';
 
 export default function OrderView({ order, items }: { order: Order; items: OrderItem[] }) {
@@ -10,7 +12,7 @@ export default function OrderView({ order, items }: { order: Order; items: Order
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Order #{order.id}</h2>
-          <p className="text-sm text-gray-500">{order.created_at} UTC · Payment by check</p>
+          <p className="text-sm text-gray-500">{order.created_at} UTC · Payment by {METHOD_SHORT[order.payment_method] ?? order.payment_method}</p>
         </div>
         <Badge value={order.status} label={ORDER_STATUS_LABEL[order.status]} />
       </div>
@@ -26,7 +28,15 @@ export default function OrderView({ order, items }: { order: Order; items: Order
                   {s.label}: {s.value}
                 </p>
               ))}
-              {i.recurring && <p className="text-sm font-semibold text-amber-700">Renews yearly until canceled</p>}
+              {i.recurring &&
+                (i.subscription_canceled_at ? (
+                  <p className="text-sm font-semibold text-gray-600">
+                    Subscription canceled {dateOnlyText(i.subscription_canceled_at)} · membership valid through {validThroughText(membershipYear(order.created_at))}
+                    {isExpired(membershipYear(order.created_at)) ? ' (expired)' : ` (${timeLeftText(membershipYear(order.created_at))})`}
+                  </p>
+                ) : (
+                  <p className="text-sm font-semibold text-amber-700">Renews yearly until canceled</p>
+                ))}
               {order.status !== 'cancelled' && (
                 <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
                   <Badge
@@ -50,6 +60,12 @@ export default function OrderView({ order, items }: { order: Order; items: Order
               <span className="font-semibold text-gray-700">Included in item prices</span>
             )}
         </div>
+        {!!order.refunded_cents && (
+          <div className="flex justify-between text-sm font-semibold text-gray-700">
+            <span>Refunded</span>
+            <span>-{formatCents(order.refunded_cents)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-lg font-extrabold">
           <span>Total</span>
           <span>{formatCents(order.total_cents)}</span>

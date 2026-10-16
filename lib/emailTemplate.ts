@@ -1,3 +1,4 @@
+import { CONTACT_PHONE, CONTACT_PHONE_LINK, contactEmail, siteHost } from '@/lib/contact';
 // Shared look for every email the shop sends: logo header, white card, footer.
 // The logo is attached inline by sendMail (cid:logo), so it shows even when the site is not public yet.
 
@@ -11,7 +12,16 @@ export const LINE = '#e5e7eb';
 
 /** Wraps content in the branded email layout. `body` is trusted HTML. */
 export function emailLayout(opts: { title: string; preheader?: string; body: string }): string {
-  const site = process.env.NEXT_PUBLIC_SITE_URL || '';
+  const host = siteHost();
+  const mail = contactEmail();
+  // Mail apps turn plain email addresses and phone numbers into blue links; real links with their own colour stay as designed.
+  const linkStyle = 'color:#d1d5db;text-decoration:none';
+  const contact = [
+    mail ? `<a href="mailto:${escapeHtml(mail)}" style="${linkStyle}">${escapeHtml(mail)}</a>` : '',
+    `<a href="tel:${CONTACT_PHONE_LINK}" style="${linkStyle}">${CONTACT_PHONE}</a>`,
+  ]
+    .filter(Boolean)
+    .join(' &nbsp;·&nbsp; ');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(opts.title)}</title></head>
 <body style="margin:0;padding:0;background:#f4f3ef;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:${INK}">
@@ -33,8 +43,8 @@ ${opts.preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacit
     </td></tr>
     <tr><td style="background:#111827;border-radius:0 0 16px 16px;padding:22px 32px;text-align:center;color:#d1d5db;font-size:12px;line-height:1.7">
       <div style="font-weight:700;color:#ffffff;font-size:13px">Japan Karate Association / American Federation</div>
-      <div>JKAAFUSA@gmail.com &nbsp;·&nbsp; (504) 835-6825</div>
-      ${site ? `<div><a href="${escapeHtml(site)}" style="color:#fca5a5;text-decoration:none">${escapeHtml(site.replace(/^https?:\/\//, ''))}</a></div>` : ''}
+      <div style="color:#d1d5db">${contact}</div>
+      ${host ? `<div><a href="https://${escapeHtml(host)}" style="color:#d1d5db;text-decoration:none">${escapeHtml(host)}</a></div>` : ''}
     </td></tr>
   </table>
 </td></tr></table>

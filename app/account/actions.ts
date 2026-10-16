@@ -18,6 +18,7 @@ import { sendApprovalRequestEmail } from '@/lib/accountEmail';
 import {
   sendApprovalRequestReceivedEmail,
   sendPasswordChangedEmail,
+  sendSubscriptionCanceledAdminEmail,
   sendSubscriptionCanceledEmail,
   sendWelcomeEmail,
 } from '@/lib/customerEmails';
@@ -223,8 +224,11 @@ export async function saveAddressesAction(_prev: SaveState, fd: FormData): Promi
 
 export async function cancelSubscriptionAction(itemId: number) {
   const user = await requireUser('/account/membership');
-  await cancelSubscription(user.id, itemId);
-  after(() => sendSubscriptionCanceledEmail(user.id));
+  const done = await cancelSubscription(user.id, itemId);
+  if (done) {
+    after(() => sendSubscriptionCanceledEmail(user.id, done.year, done.name));
+    after(() => sendSubscriptionCanceledAdminEmail(user.id, done.orderId, done.year, done.name));
+  }
   revalidatePath('/account/membership');
 }
 

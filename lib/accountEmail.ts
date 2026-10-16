@@ -1,10 +1,11 @@
 import 'server-only';
 import { getUserById } from '@/lib/auth';
+import { siteUrl } from '@/lib/siteUrl';
 import { getApplication } from '@/lib/shop';
 import { sendMail, simpleEmail } from '@/lib/email';
 import { buildApplicationPdf } from '@/lib/applicationPdf';
 
-const site = () => process.env.NEXT_PUBLIC_SITE_URL || '';
+const site = siteUrl;
 
 /** Tells a member their JKA/AF Individual Membership was approved or declined. Never throws. */
 export async function sendAccountStatusEmail(userId: number, status: 'approved' | 'rejected'): Promise<void> {
@@ -19,7 +20,7 @@ export async function sendAccountStatusEmail(userId: number, status: 'approved' 
         approved
           ? 'Good news: your JKA/AF Individual Membership has been approved. You can now sign in and order from the JKA/AF shop.'
           : 'We could not approve your JKA/AF Individual Membership. Please contact JKA/AF if you have questions.',
-        ...(approved && site() ? [`Sign in: ${site()}/account/login`] : []),
+        ...(approved ? [`Sign in: ${await site()}/account/login`] : []),
       ],
     );
     await sendMail({ to: user.email, subject: approved ? 'Your JKA/AF Individual Membership is approved' : 'Your JKA/AF Individual Membership', html, text });
@@ -67,7 +68,7 @@ export async function sendApprovalRequestEmail(userId: number): Promise<void> {
       `${user.first_name} ${user.last_name} (${user.email}) asked to be approved.`,
       `Dojo: ${user.dojo || '-'}  ·  Rank: ${user.rank || '-'}`,
       ...(user.approval_note ? [`Note: ${user.approval_note}`] : []),
-      ...(site() ? [`Review: ${site()}/admin/dojo/members`] : []),
+      `Review: ${await site()}/admin/dojo/members`,
     ]);
     await sendMail({ to, subject: `Membership approval requested: ${user.first_name} ${user.last_name}`, html, text });
   } catch (e) {

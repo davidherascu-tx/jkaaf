@@ -47,12 +47,20 @@ export function LoginForm({ next, showRegisterLink = true }: { next: string; sho
           {pending ? 'Signing in…' : 'Sign in'}
         </button>
         {showRegisterLink && (
-        <p className="text-sm text-gray-600 text-center">
-          No account yet?{' '}
-          <Link href="/account/register" className="font-semibold text-red-600 hover:underline">
-            Create one
-          </Link>
-        </p>
+          <div className="space-y-2 text-sm text-gray-600 text-center">
+            <p>
+              No account yet?{' '}
+              <Link href="/account/register" className="font-semibold text-red-600 hover:underline">
+                Create one
+              </Link>
+            </p>
+            <p>
+              Didn&apos;t receive your activation link?{' '}
+              <Link href="/account/activate" className="font-semibold text-red-600 hover:underline">
+                Send it again
+              </Link>
+            </p>
+          </div>
         )}
       </form>
     </Card>

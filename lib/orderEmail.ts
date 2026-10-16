@@ -70,7 +70,7 @@ export async function sendOrderInvoice(orderId: number): Promise<void> {
 
       ${order.notes ? `<p style="font-size:14px;margin:20px 0 0"><strong>Order notes</strong><br>${br(order.notes)}</p>` : ''}
 
-      ${emailNote(`<strong style="font-size:15px">Pay by check - ${formatCents(order.total_cents)}</strong><br>
+      ${order.payment_method !== 'check' ? emailNote(`<strong style="font-size:15px">Pay online - ${formatCents(order.total_cents)}</strong><br>Open your order in your JKA/AF account and choose Pay now to finish your payment.`) : emailNote(`<strong style="font-size:15px">Pay by check - ${formatCents(order.total_cents)}</strong><br>
         Make the check payable to: <strong>${esc(payableTo)}</strong><br>
         Mail to: <strong>${br(mailTo)}</strong><br>
         Write "Order #${order.id}" on the memo line. Your order is processed once the check is received.`)}`;
@@ -90,9 +90,13 @@ export async function sendOrderInvoice(orderId: number): Promise<void> {
       `Shipping: ${shippingLabel}`,
       `Total due: ${formatCents(order.total_cents)}`,
       '',
-      `Pay by check - make it payable to ${payableTo}`,
-      `Mail to: ${mailTo}`,
-      `Write "Order #${order.id}" on the memo line. Your order is processed once the check is received.`,
+      ...(order.payment_method !== 'check'
+        ? [`Pay online - open order #${order.id} in your JKA/AF account and choose Pay now.`]
+        : [
+            `Pay by check - make it payable to ${payableTo}`,
+            `Mail to: ${mailTo}`,
+            `Write "Order #${order.id}" on the memo line. Your order is processed once the check is received.`,
+          ]),
     ].join('\n');
 
     await sendMail({

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { listApplications, listMembershipPurchases, ORDER_STATUS_LABEL } from '@/lib/shop';
+import { dateOnlyText, isExpired, membershipYear, timeLeftText, validThroughText } from '@/lib/membership';
 import CancelSubscriptionButton from '@/components/account/CancelSubscriptionButton';
 import RequestApprovalForm from '@/components/account/RequestApprovalForm';
 import MembershipCard from '@/components/account/MembershipCard';
@@ -8,8 +9,6 @@ import { Badge, Card, secondaryBtn } from '@/components/shop/ui';
 
 export const metadata = { title: 'Membership | JKA/AF' };
 
-/** A membership covers the calendar year it was ordered in (Jan 1 - Dec 31), not 12 months from the order date. */
-const membershipYear = (orderedAt: string) => Number(orderedAt.slice(0, 4));
 
 export default async function MembershipPage() {
   const user = await requireUser('/account/membership');
@@ -53,15 +52,18 @@ export default async function MembershipPage() {
                   <Link href={`/shop/orders/${m.order_id}`} className="ml-2 text-sm text-gray-500 hover:text-red-600">
                     Order #{m.order_id}
                   </Link>
-                  <span className="block text-xs text-gray-600">
-                    Valid through December 31, {membershipYear(m.ordered_at)}
-                    {membershipYear(m.ordered_at) < thisYear && ' (expired)'}
+                  <span className={`block text-xs font-semibold ${isExpired(membershipYear(m.ordered_at)) ? 'text-gray-500' : 'text-green-700'}`}>
+                    {isExpired(membershipYear(m.ordered_at))
+                      ? `Expired ${validThroughText(membershipYear(m.ordered_at))}`
+                      : `Active until ${validThroughText(membershipYear(m.ordered_at))} · ${timeLeftText(membershipYear(m.ordered_at))}`}
                   </span>
                   <span className="block text-xs text-gray-500">Ordered {m.ordered_at} UTC</span>
                   {m.selections.length > 0 && <span className="block text-xs text-gray-600">{m.selections.map((x) => x.value).join(' · ')}</span>}
                   {m.recurring && (
                     <span className={`block text-xs font-semibold ${m.canceled ? 'text-gray-500' : 'text-amber-700'}`}>
-                      {m.canceled ? 'Subscription canceled' : 'Renews every January until canceled'}
+                      {m.canceled
+                        ? `Subscription canceled ${m.canceled_at ? dateOnlyText(m.canceled_at) : ''}. It will not renew; your membership stays active until ${validThroughText(membershipYear(m.ordered_at))}.`
+                        : 'Renews every January until canceled'}
                     </span>
                   )}
                 </span>

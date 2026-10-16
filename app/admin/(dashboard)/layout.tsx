@@ -41,10 +41,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       items: [
         { href: '/admin/shop', label: 'Shop dashboard', exact: true, icon: 'M3 3v18h18M7 14l4-4 3 3 5-6' },
         { href: '/admin/shop/orders', label: 'Orders', n: openOrders, icon: 'M6 2l-2 4v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6l-2-4zM4 6h16M16 10a4 4 0 0 1-8 0' },
+        { href: '/admin/shop/subscriptions', label: 'Subscriptions', icon: 'M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3' },
         { href: '/admin/shop/customers', label: 'Customers', icon: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
         { href: '/admin/shop/products', label: 'Products', n: lowStock, icon: 'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8' },
         { href: '/admin/shop/reports', label: 'Reports', icon: 'M5 20V10M12 20V4M19 20v-7' },
       ],
+    },
+    {
+      title: 'System',
+      items: [{ href: '/admin/backup', label: 'Backup & restore', icon: 'M12 3v12M7 10l5 5 5-5M4 21h16' }],
     },
   ];
 

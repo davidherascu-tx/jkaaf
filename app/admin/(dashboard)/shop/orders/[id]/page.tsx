@@ -10,6 +10,7 @@ import {
 } from '@/app/admin/actions';
 import { CARRIERS } from '@/lib/carriers';
 import StateInput from '@/components/shop/StateInput';
+import PaymentsCard from '@/components/admin/PaymentsCard';
 import TrackingInfo from '@/components/shop/TrackingInfo';
 import { getUserById } from '@/lib/auth';
 import { fulfillmentLabel, FULFILLMENT_STATUSES, getOrder, ORDER_STATUS_LABEL } from '@/lib/shop';
@@ -82,6 +83,8 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
           </div>
         )}
       </Card>
+
+      <PaymentsCard order={order} />
 
       {!cancelled && (
         <Card className="!p-5">

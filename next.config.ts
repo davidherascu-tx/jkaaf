@@ -15,7 +15,7 @@ const csp = [
   "frame-ancestors 'self'",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  "form-action 'self' https://checkout.stripe.com https://www.paypal.com https://www.sandbox.paypal.com",
 ].join("; ");
 
 const baseHeaders = [

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getAddresses, sameAddress } from "@/lib/addresses";
+import { enabledMethods, METHOD_LABEL } from "@/lib/payments/config";
 import { getCartOwner } from "@/lib/cart";
 import { cartNeedsShipping, getCart } from "@/lib/shop";
 import { formatCents } from "@/lib/money";
@@ -18,7 +19,6 @@ export default async function CheckoutPage() {
   const user = await getUser();
   const owner = await getCartOwner();
   const addresses = user ? await getAddresses(user.id) : null;
-  if (user && !(addresses?.billing && addresses.shipping)) redirect("/account/addresses?required=1");
   const billing = addresses?.billing ?? null;
   const shipping = addresses?.shipping ?? null;
   const cart = owner ? await getCart(owner) : [];
@@ -34,13 +34,16 @@ export default async function CheckoutPage() {
       <CheckoutProvider subtotalCents={total}>
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_26rem] xl:grid-cols-[minmax(0,1fr)_30rem] gap-8">
           <div className="space-y-5">
-            <Notice>
-              Payment method: <strong>check</strong>. After placing your order
-              you will see where to send it.
-            </Notice>
+            {enabledMethods().length <= 1 && (
+              <Notice>
+                Payment method: <strong>check</strong>. After placing your order
+                you will see where to send it.
+              </Notice>
+            )}
             <Card>
               <CheckoutForm
                 needsShipping={cartNeedsShipping(cart)}
+                methods={enabledMethods().map((id) => ({ id, label: METHOD_LABEL[id] }))}
                 billing={billing}
                 shipping={shipping}
                 sameAsBilling={sameAddress(billing, shipping)}

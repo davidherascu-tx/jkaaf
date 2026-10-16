@@ -49,8 +49,23 @@ function transport() {
   });
 }
 
+/**
+ * Addresses that must never receive mail from the site. Default: jkaafusa@gmail.com while the website is not live.
+ * Change it with EMAIL_BLOCKLIST (comma separated; set it to "none" to turn the block off when you go live).
+ */
+const blocked = (): Set<string> => {
+  const raw = process.env.EMAIL_BLOCKLIST ?? 'jkaafusa@gmail.com';
+  return new Set(raw.split(',').map((a) => a.trim().toLowerCase()).filter((a) => a && a !== 'none'));
+};
+
 /** Sends one email. Returns null on success, or an error message. Never throws. */
 export async function sendMail(mail: Mail): Promise<string | null> {
+  const block = blocked();
+  if (block.has(mail.to.trim().toLowerCase())) {
+    console.warn(`[email] blocked: "${mail.subject}" was not sent to ${mail.to} (EMAIL_BLOCKLIST).`);
+    return 'This address is blocked from receiving email.';
+  }
+  if (mail.bcc && block.has(mail.bcc.trim().toLowerCase())) mail = { ...mail, bcc: undefined };
   if (!isEmailConfigured()) {
     console.warn(`[email] SMTP not configured (set SMTP_HOST and EMAIL_FROM); skipped "${mail.subject}" to ${mail.to}`);
     return 'Email is not configured yet.';

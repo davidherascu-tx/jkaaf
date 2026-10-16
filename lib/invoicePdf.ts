@@ -4,6 +4,8 @@ import path from 'node:path';
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { getAddresses } from '@/lib/addresses';
 import { formatCents } from '@/lib/money';
+import { CONTACT_PHONE, contactEmail } from '@/lib/contact';
+import { METHOD_LABEL } from '@/lib/payments/config';
 import { fulfillmentLabel, ORDER_STATUS_LABEL, type Order, type OrderItem } from '@/lib/shop';
 
 const W = 612;
@@ -76,7 +78,7 @@ export async function buildInvoicePdf(order: Order, items: OrderItem[]): Promise
     /* the logo is optional */
   }
   text('Japan Karate Association / American Federation', M + 66, y - 22, 12, bold);
-  text('JKAAFUSA@gmail.com  |  (504) 835-6825', M + 66, y - 38, 9, regular, MUTED);
+  text([contactEmail(), CONTACT_PHONE].filter(Boolean).join('  |  '), M + 66, y - 38, 9, regular, MUTED);
   right('INVOICE', W - M, y - 24, 24, bold, RED);
   y -= 74;
   rule(y, RED, 2);
@@ -86,7 +88,7 @@ export async function buildInvoicePdf(order: Order, items: OrderItem[]): Promise
   const date = new Date(order.created_at.replace(' ', 'T') + 'Z').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
   text(`Order #${order.id}`, M, y, 14, bold);
   text(`Date: ${date}`, M, y - 16, 10, regular, MUTED);
-  text('Payment method: Check', M, y - 30, 10, regular, MUTED);
+  text(`Payment method: ${METHOD_LABEL[order.payment_method] ?? order.payment_method}`, M, y - 30, 10, regular, MUTED);
   if (paid) {
     right('PAID', W - M, y - 2, 18, bold, GREEN);
     right(ORDER_STATUS_LABEL[order.status], W - M, y - 18, 10, regular, MUTED);
@@ -172,6 +174,10 @@ export async function buildInvoicePdf(order: Order, items: OrderItem[]): Promise
     text('Payment received. Thank you for supporting JKA/AF!', M, y, 10, bold, GREEN);
     y -= 14;
     text('Memberships are valid for the calendar year they are ordered in (January 1 to December 31).', M, y, 9, regular, MUTED);
+  } else if (order.payment_method !== 'check') {
+    text('HOW TO PAY', M, y, 8, bold, MUTED);
+    y -= 15;
+    text(`Pay ${formatCents(order.total_cents)} online: open this order in your JKA/AF account and choose Pay now.`, M, y, 10, bold);
   } else {
     const payableTo = process.env.CHECK_PAYABLE_TO || 'JKA/AF';
     const mailTo = process.env.CHECK_MAIL_TO || 'Please contact JKA/AF for the mailing address.';

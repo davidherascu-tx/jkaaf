@@ -1,5 +1,5 @@
 import 'server-only';
-import { headers } from 'next/headers';
+import { siteUrl } from '@/lib/siteUrl';
 import { createHash, randomBytes } from 'node:crypto';
 import { query, queryOne } from '@/lib/db';
 import { sendMail } from '@/lib/email';
@@ -8,13 +8,8 @@ import { emailButton, emailLayout, escapeHtml } from '@/lib/emailTemplate';
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const HOURS = 48;
 
-/** The public address of the site, for links in emails. */
-export async function siteOrigin(): Promise<string> {
-  const h = await headers();
-  const host = h.get('x-forwarded-host') ?? h.get('host');
-  const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https');
-  return (process.env.NEXT_PUBLIC_SITE_URL || `${proto}://${host}`).replace(/\/$/, '');
-}
+/** The public address of the site, for links in emails (see lib/siteUrl.ts). */
+export const siteOrigin = siteUrl;
 
 /** Emails an activation link (valid 48 hours; replaces any older one). Never throws. */
 export async function sendActivationEmail(userId: number, origin: string): Promise<void> {

@@ -377,3 +377,49 @@ create table if not exists rate_limits (
   count integer not null,
   reset_at bigint not null
 );
+
+-- ───────── Payments (check today; Stripe and PayPal when you switch them on) ─────────
+
+-- Every payment received for an order. Check payments are recorded when the admin marks payment received.
+create table if not exists payments (
+  id bigint generated always as identity primary key,
+  order_id bigint not null references orders (id),
+  provider text not null check (provider in ('check', 'stripe', 'paypal')),
+  -- Stripe PaymentIntent id / PayPal capture id ('' for checks). Unique per provider so a webhook sent twice records once.
+  provider_ref text not null default '',
+  amount_cents integer not null,
+  refunded_cents integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists payments_order_idx on payments (order_id);
+create unique index if not exists payments_provider_ref_key on payments (provider, provider_ref) where provider_ref <> '';
+
+-- Money sent back to the customer.
+create table if not exists refunds (
+  id bigint generated always as identity primary key,
+  payment_id bigint not null references payments (id),
+  order_id bigint not null references orders (id),
+  provider text not null,
+  provider_ref text not null default '',
+  amount_cents integer not null,
+  reason text not null default '',
+  created_by bigint references users (id),
+  created_at timestamptz not null default now()
+);
+create index if not exists refunds_order_idx on refunds (order_id);
+
+-- Webhook events already handled (Stripe and PayPal may send the same event more than once).
+create table if not exists webhook_events (
+  provider text not null,
+  event_id text not null,
+  received_at timestamptz not null default now(),
+  primary key (provider, event_id)
+);
+
+-- Stripe Checkout Session id / PayPal order id of the payment started for this order.
+alter table orders add column if not exists provider_ref text not null default '';
+
+-- Orders already marked paid before this existed: record them as check payments (once).
+insert into payments (order_id, provider, amount_cents)
+select o.id, 'check', o.total_cents from orders o
+ where o.status in ('paid', 'completed') and not exists (select 1 from payments p where p.order_id = o.id);

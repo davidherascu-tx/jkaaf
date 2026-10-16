@@ -43,3 +43,6 @@ next-env.d.ts
 # shop database
 /data/
 !.env.example
+
+# local database backups (contain customer data)
+/backups/

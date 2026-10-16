@@ -4,17 +4,19 @@ import { requireUser } from '@/lib/auth';
 import { getOrder } from '@/lib/shop';
 import { formatCents } from '@/lib/money';
 import OrderView from '@/components/shop/OrderView';
-import { Notice, PageShell, secondaryBtn } from '@/components/shop/ui';
+import { Notice, PageShell, primaryBtn, secondaryBtn } from '@/components/shop/ui';
+import { enabledMethods, METHOD_LABEL } from '@/lib/payments/config';
+import { payNowAction } from '@/app/shop/actions';
 
 export default async function OrderPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ placed?: string }>;
+  searchParams: Promise<{ placed?: string; paid?: string; payerror?: string }>;
 }) {
   const { id } = await params;
-  const { placed } = await searchParams;
+  const { placed, paid, payerror } = await searchParams;
   const user = await requireUser(`/shop/orders/${id}`);
   const found = /^\d+$/.test(id) ? await getOrder(Number(id)) : null;
   // Customers can only see their own orders; admins can see all.
@@ -27,13 +29,31 @@ export default async function OrderPage({
   return (
     <PageShell title={placed ? 'Thank you! Order placed' : `Order #${order.id}`}>
       <div className="space-y-5">
-        {order.status === 'awaiting_payment' && (
+        {payerror && (
+          <Notice tone="warn">We could not complete the online payment. Nothing was charged. You can try again below, or pay by check.</Notice>
+        )}
+        {paid && order.status === 'awaiting_payment' && !payerror && (
+          <Notice tone="ok">Thank you! We are confirming your payment. This page updates as soon as it is confirmed, and you will get an email.</Notice>
+        )}
+        {order.status === 'awaiting_payment' && order.payment_method === 'check' && (
           <Notice tone="warn">
             <p className="font-bold mb-1">Pay by check — {formatCents(order.total_cents)}</p>
             <p>Make the check payable to: <strong>{payableTo}</strong></p>
             <p>Mail to: <strong className="whitespace-pre-line">{mailTo}</strong></p>
             <p>Write “Order #{order.id}” on the memo line. Your order is processed once the check is received.</p>
           </Notice>
+        )}
+        {order.status === 'awaiting_payment' && enabledMethods().some((m) => m !== 'check') && (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold text-gray-700">{order.payment_method === 'check' ? 'Or pay online:' : 'Pay now:'}</span>
+            {enabledMethods()
+              .filter((m) => m !== 'check')
+              .map((m) => (
+                <form key={m} action={payNowAction.bind(null, order.id, m)}>
+                  <button className={primaryBtn}>{METHOD_LABEL[m]}</button>
+                </form>
+              ))}
+          </div>
         )}
         <OrderView order={order} items={items} />
         <div className="flex flex-wrap items-center justify-between gap-3">

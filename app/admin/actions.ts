@@ -2,14 +2,15 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { headers } from 'next/headers';
+import { siteUrl } from '@/lib/siteUrl';
 import { after } from 'next/server';
 import { sendOrderInvoice } from '@/lib/orderEmail';
 import { createResetLink, sendPasswordReset } from '@/lib/passwordReset';
 import { getCustomer } from '@/lib/shopAdmin';
 import { sendAccountStatusEmail, sendApplicationResultEmail } from '@/lib/accountEmail';
 import { requireAdmin } from '@/lib/auth';
-import { parseDollars } from '@/lib/money';
+import { formatCents, parseDollars } from '@/lib/money';
+import { netPaidCents, recordCheckPayment, refundPayment, removeCheckPayment } from '@/lib/payments';
 import { CARRIERS } from '@/lib/carriers';
 import { normalizeUsState } from '@/lib/regions';
 import { sendItemUpdateEmail, sendOrderCancelledEmail, sendOrderCompletedEmail, sendPaymentReceivedEmail } from '@/lib/customerEmails';
@@ -161,6 +162,11 @@ export async function setOrderStatusAction(id: number, status: string) {
   if (!(ORDER_STATUSES as readonly string[]).includes(status)) return;
   const before = (await getOrder(id))?.order.status;
   await setOrderStatus(id, status as Order['status']);
+  // Reopening a cancelled order that is still fully paid puts it back to "paid", not "awaiting payment".
+  if (before === 'cancelled' && status === 'awaiting_payment') {
+    const total = (await getOrder(id))?.order.total_cents ?? Infinity;
+    if ((await netPaidCents(id)) >= total) await setPaymentReceived(id, true);
+  }
   if (status === 'cancelled' && before !== 'cancelled') after(() => sendOrderCancelledEmail(id));
   revalidatePath('/admin', 'layout');
   revalidatePath('/shop', 'layout');
@@ -174,10 +180,36 @@ export async function updateOrderShippingAction(orderId: number, fd: FormData) {
   revalidatePath('/account', 'layout');
 }
 
+export interface RefundState {
+  error?: string;
+  done?: string;
+}
+
+/** "Send refund": card and PayPal refunds go through the provider; a check refund is recorded after the check is mailed. */
+export async function refundPaymentAction(orderId: number, paymentId: number, _prev: RefundState, fd: FormData): Promise<RefundState> {
+  const admin = await requireAdmin();
+  const cents = parseDollars(String(fd.get('amount') ?? ''));
+  if (cents === null) return { error: 'Enter the amount as dollars, for example 25.00.' };
+  const res = await refundPayment({
+    orderId,
+    paymentId,
+    amountCents: cents,
+    reason: String(fd.get('reason') ?? '').trim().slice(0, 200),
+    adminId: admin.id,
+  });
+  revalidatePath('/admin', 'layout');
+  revalidatePath('/account', 'layout');
+  if (!res.ok) return { error: res.error };
+  return { done: `Refund of ${formatCents(res.amountCents)} recorded and the customer was emailed.` };
+}
+
 export async function setPaymentAction(id: number, received: boolean) {
   await requireAdmin();
   const before = (await getOrder(id))?.order.status;
   await setPaymentReceived(id, received);
+  // Keep the payment records in step so a check payment can be refunded later like any other.
+  if (received) await recordCheckPayment(id);
+  else await removeCheckPayment(id);
   const afterStatus = (await getOrder(id))?.order.status;
   if (received && before === 'awaiting_payment') after(() => sendPaymentReceivedEmail(id));
   if (afterStatus === 'completed' && before !== 'completed') after(() => sendOrderCompletedEmail(id));
@@ -244,12 +276,7 @@ export interface ResetState {
   link?: string;
 }
 
-async function siteOrigin(): Promise<string> {
-  const h = await headers();
-  const host = h.get('x-forwarded-host') ?? h.get('host');
-  const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https');
-  return (process.env.NEXT_PUBLIC_SITE_URL || `${proto}://${host}`).replace(/\/$/, '');
-}
+const siteOrigin = siteUrl;
 
 /** Emails the customer a link to choose a new password. */
 export async function sendCustomerResetEmailAction(userId: number, _prev: ResetState): Promise<ResetState> {

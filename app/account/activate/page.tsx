@@ -7,7 +7,7 @@ export default function ActivatePage() {
   return (
     <AuthShell
       title="Activate your account"
-      subtitle="That activation link is invalid or has expired, or you need a new one. Enter your email and we will send a fresh link."
+      subtitle="Enter the email you signed up with and we will send you a new activation link. Check your spam folder too."
     >
       <ResendActivationForm />
     </AuthShell>

@@ -306,6 +306,8 @@ export interface Order {
   items_done?: number;
   /** Not shipped / Partly shipped / Shipped / Delivered / No shipping. */
   shipping?: string;
+  /** Money already sent back to the customer for this order. */
+  refunded_cents?: number;
 }
 export interface OrderItem {
   id: number;
@@ -320,6 +322,8 @@ export interface OrderItem {
   fulfillment: 'pending' | 'shipped' | 'fulfilled';
   tracking: string;
   carrier: string;
+  /** When the customer canceled this yearly subscription (null = still renewing). */
+  subscription_canceled_at: string | null;
 }
 
 export interface ShippingInfo {
@@ -338,6 +342,7 @@ export async function placeOrder(
   user: User,
   ship: ShippingInfo,
   notes: string,
+  paymentMethod = 'check',
 ): Promise<{ orderId: number } | { error: string }> {
   const saved = await queryOne("select count(*) as n from addresses where user_id = $1 and kind in ('billing', 'shipping')", [user.id]);
   if (Number(saved!.n) < 2) return { error: 'Please add your billing and shipping address in your account before ordering.' };
@@ -374,7 +379,9 @@ export async function placeOrder(
       notes,
       JSON.stringify(items),
     ]);
-    return { orderId: Number(r!.id) };
+    const orderId = Number(r!.id);
+    await query('update orders set payment_method = $2 where id = $1', [orderId, paymentMethod]);
+    return { orderId };
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Could not place the order.' };
   }
@@ -397,6 +404,7 @@ const toOrder = (r: Row): Order => {
     created_at: ts(r.created_at as Date),
     customer_name: hasCustomer ? `${r.customer_first} ${r.customer_last}` : undefined,
     customer_email: hasCustomer ? (r.customer_email as string) : undefined,
+    refunded_cents: Number(r.refunded_cents ?? 0),
     items_total: Number(r.items_total ?? 0),
     items_done: Number(r.items_done ?? 0),
     shipping: shippingSummary(Number(r.ship_total ?? 0), Number(r.ship_pending ?? 0), Number(r.ship_shipped ?? 0)),
@@ -414,6 +422,7 @@ export function shippingSummary(total: number, pending: number, shipped: number)
 /** SQL for the shipping counts: items that ship are physical products or a membership sticker / card. */
 const SHIPS = "(p.physical or x.selections::text ilike '%sticker or card%')";
 const ORDER_SELECT = `select o.*, u.first_name as customer_first, u.last_name as customer_last, u.email as customer_email,
+    (select coalesce(sum(r.amount_cents), 0) from refunds r where r.order_id = o.id) as refunded_cents,
     (select count(*) from order_items x where x.order_id = o.id) as items_total,
     (select count(*) from order_items x where x.order_id = o.id and x.fulfillment <> 'pending') as items_done,
     (select count(*) from order_items x left join products p on p.id = x.product_id where x.order_id = o.id and ${SHIPS}) as ship_total,
@@ -446,6 +455,7 @@ export async function getOrder(id: number): Promise<{ order: Order; items: Order
     fulfillment: r.fulfillment as OrderItem['fulfillment'],
     tracking: (r.tracking as string) ?? '',
     carrier: (r.carrier as string) ?? '',
+    subscription_canceled_at: r.subscription_canceled_at ? ts(r.subscription_canceled_at as Date) : null,
   }));
   return { order: toOrder(o), items };
 }
@@ -644,6 +654,7 @@ export interface MembershipPurchase {
   selections: { label: string; value: string }[];
   recurring: boolean;
   canceled: boolean;
+  canceled_at: string | null;
 }
 
 /** Individual Membership lines on this member's orders (cancelled orders left out), newest first. */
@@ -667,17 +678,64 @@ export async function listMembershipPurchases(userId: number): Promise<Membershi
     selections: (r.selections ?? []) as MembershipPurchase['selections'],
     recurring: !!r.recurring,
     canceled: !!r.subscription_canceled_at,
+    canceled_at: r.subscription_canceled_at ? ts(r.subscription_canceled_at as Date) : null,
   }));
 }
 
-/** Stops a yearly subscription renewing. Only the order's owner can do this. */
-export async function cancelSubscription(userId: number, itemId: number) {
-  await query(
-    `update order_items set subscription_canceled_at = now()
-      where id = $1 and recurring and subscription_canceled_at is null
-        and order_id in (select id from orders where user_id = $2)`,
+/**
+ * Stops a yearly subscription renewing. Only the order's owner can do this.
+ * Returns what was canceled (to email about it), or null when there was nothing to cancel (already canceled, not theirs).
+ */
+export async function cancelSubscription(userId: number, itemId: number): Promise<{ orderId: number; year: number; name: string } | null> {
+  const r = await queryOne(
+    `update order_items oi set subscription_canceled_at = now()
+       from orders o
+      where oi.id = $1 and oi.recurring and oi.subscription_canceled_at is null and o.id = oi.order_id and o.user_id = $2
+      returning oi.order_id, oi.name, o.created_at`,
     [itemId, userId],
   );
+  return r ? { orderId: r.order_id as number, year: Number(ts(r.created_at as Date).slice(0, 4)), name: r.name as string } : null;
+}
+
+export interface SubscriptionRow {
+  item_id: number;
+  order_id: number;
+  order_status: Order['status'];
+  product: string;
+  user_id: number;
+  customer: string;
+  email: string;
+  ordered_at: string;
+  year: number;
+  canceled_at: string | null;
+}
+
+/** Every yearly subscription (cancelled orders left out): who has one, and who canceled. Admin only. */
+export async function listSubscriptions(): Promise<SubscriptionRow[]> {
+  const rows = await query(
+    `select oi.id as item_id, oi.order_id, oi.name, oi.subscription_canceled_at, o.status as order_status, o.created_at as ordered_at,
+            u.id as user_id, u.first_name, u.last_name, u.email
+       from order_items oi
+       join orders o on o.id = oi.order_id
+       left join users u on u.id = o.user_id
+      where oi.recurring and o.status <> 'cancelled'
+      order by oi.subscription_canceled_at desc nulls last, oi.id desc`,
+  );
+  return rows.map((r) => {
+    const ordered = ts(r.ordered_at as Date);
+    return {
+      item_id: r.item_id as number,
+      order_id: r.order_id as number,
+      order_status: r.order_status as Order['status'],
+      product: r.name as string,
+      user_id: r.user_id as number,
+      customer: `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim(),
+      email: (r.email as string) ?? '',
+      ordered_at: ordered,
+      year: Number(ordered.slice(0, 4)),
+      canceled_at: r.subscription_canceled_at ? ts(r.subscription_canceled_at as Date) : null,
+    };
+  });
 }
 
 /** Admin fix for the address on an order (does not touch the customer's saved addresses). */

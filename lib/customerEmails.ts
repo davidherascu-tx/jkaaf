@@ -1,13 +1,14 @@
 import 'server-only';
 import { getUserById } from '@/lib/auth';
+import { siteUrl } from '@/lib/siteUrl';
 import { sendMail } from '@/lib/email';
 import { emailButton, emailLayout, emailNote, escapeHtml } from '@/lib/emailTemplate';
 import { trackingUrl } from '@/lib/carriers';
 import { fulfillmentLabel, getOrder } from '@/lib/shop';
 import { formatCents } from '@/lib/money';
+import { isExpired, timeLeftText, validThroughText } from '@/lib/membership';
 
-const site = () => (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
-const link = (path: string) => (site() ? site() + path : '');
+const link = async (path: string) => (await siteUrl()) + path;
 
 interface Content {
   to: string;
@@ -24,7 +25,7 @@ interface Content {
 /** Sends one branded customer email. Never throws: a mail problem must not break the action that triggered it. */
 async function send(c: Content): Promise<void> {
   try {
-    const url = c.button ? link(c.button.path) : '';
+    const url = c.button ? await link(c.button.path) : '';
     const body = `${c.lines.map((l) => `<p style="margin:0 0 14px">${escapeHtml(l)}</p>`).join('')}
       ${c.noteHtml ? emailNote(c.noteHtml, 'green') : ''}
       ${url ? emailButton(url, c.button!.label) : ''}`;
@@ -89,18 +90,49 @@ export async function sendPasswordChangedEmail(userId: number): Promise<void> {
   });
 }
 
-export async function sendSubscriptionCanceledEmail(userId: number): Promise<void> {
+/** Tells the customer their subscription was canceled and how long the paid membership still lasts. */
+export async function sendSubscriptionCanceledEmail(userId: number, year: number, name: string): Promise<void> {
   const u = await getUserById(userId);
   if (!u) return;
+  const until = validThroughText(year);
+  const left = isExpired(year) ? '' : ` (${timeLeftText(year)})`;
   await send({
     to: u.email,
     subject: 'Your JKA/AF subscription was canceled',
     title: 'Subscription canceled',
     lines: [
       `Hello ${u.first_name},`,
-      'Your yearly JKA/AF subscription was canceled and will not renew. Your membership stays valid through the end of the calendar year you paid for.',
+      `Your yearly subscription for ${name} was canceled and will not renew.`,
+      isExpired(year)
+        ? `Your ${year} membership ended on ${until}.`
+        : `You paid for ${year}, so your membership stays active until ${until}${left}.`,
     ],
+    noteHtml: isExpired(year) ? undefined : `<strong>Membership valid through ${escapeHtml(until)}</strong>`,
+    noteText: isExpired(year) ? undefined : `Membership valid through ${until}`,
     button: { label: 'View my membership', path: '/account/membership' },
+  });
+}
+
+/** Tells JKA/AF a customer canceled their subscription. */
+export async function sendSubscriptionCanceledAdminEmail(userId: number, orderId: number, year: number, name: string): Promise<void> {
+  const to = process.env.APPLICATION_NOTIFY_EMAIL || process.env.ORDER_NOTIFY_EMAIL || '';
+  if (!to) {
+    console.warn('[email] Set APPLICATION_NOTIFY_EMAIL (or ORDER_NOTIFY_EMAIL) to be told when customers cancel a subscription.');
+    return;
+  }
+  const u = await getUserById(userId);
+  if (!u) return;
+  await send({
+    to,
+    subject: `Subscription canceled: ${u.first_name} ${u.last_name}`,
+    title: 'A customer canceled a subscription',
+    lines: [
+      `${u.first_name} ${u.last_name} (${u.email}) canceled the yearly subscription for ${name} (order #${orderId}).`,
+      isExpired(year)
+        ? `That membership year (${year}) has already ended.`
+        : `They paid for ${year}, so their membership stays active until ${validThroughText(year)} (${timeLeftText(year)}).`,
+    ],
+    button: { label: 'See all subscriptions', path: '/admin/shop/subscriptions' },
   });
 }
 
@@ -167,6 +199,25 @@ export async function sendOrderCompletedEmail(orderId: number): Promise<void> {
     subject: `Order #${o.order.id} is complete`,
     title: 'Your order is complete',
     lines: [`Hello ${o.name},`, `Everything in order #${o.order.id} has been paid for and completed. Thank you for supporting JKA/AF!`],
+    button: orderButton(o.order.id),
+  });
+}
+
+/** A refund was sent (or, for a check payment, a refund check was mailed). */
+export async function sendRefundEmail(orderId: number, amountCents: number, provider: string): Promise<void> {
+  const o = await orderContext(orderId);
+  if (!o) return;
+  const money = formatCents(amountCents);
+  await send({
+    to: o.to,
+    subject: `Refund for order #${o.order.id}`,
+    title: 'Your refund is on its way',
+    lines: [
+      `Hello ${o.name},`,
+      provider === 'check'
+        ? `We are sending you a refund of ${money} for order #${o.order.id} by check. It will arrive by mail.`
+        : `We refunded ${money} for order #${o.order.id} to your ${provider === 'paypal' ? 'PayPal account' : 'card'}. It can take 5 to 10 business days to show up.`,
+    ],
     button: orderButton(o.order.id),
   });
 }
