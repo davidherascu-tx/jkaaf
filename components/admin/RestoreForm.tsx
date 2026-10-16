@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { ErrorBox, inputClass, Notice } from '@/components/shop/ui';
 
 const LABELS: Record<string, string> = {
@@ -23,10 +24,11 @@ export default function RestoreForm() {
   const [error, setError] = useState('');
   const [done, setDone] = useState<Record<string, number> | null>(null);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  const [ask, setAsk] = useState(false);
+
+  async function restore() {
     if (!file) return;
-    if (!window.confirm('This REPLACES all current customers, orders and subscriptions with the backup file. Continue?')) return;
+    setAsk(false);
     setBusy(true);
     setError('');
     setDone(null);
@@ -45,7 +47,27 @@ export default function RestoreForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4 max-w-xl">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (file) setAsk(true);
+      }}
+      className="space-y-4 max-w-xl"
+    >
+      <ConfirmDialog
+        open={ask}
+        title="Replace all shop data?"
+        confirmLabel="Yes, restore backup"
+        cancelLabel="Go back"
+        onCancel={() => setAsk(false)}
+        onConfirm={restore}
+      >
+        <p>
+          All current customers, orders, subscriptions, payments and applications will be <strong>replaced</strong> with the contents of{' '}
+          <strong>{file?.name}</strong>.
+        </p>
+        <p className="font-semibold text-red-700">Everyone, including you, will be signed out. This cannot be undone.</p>
+      </ConfirmDialog>
       {error && <ErrorBox>{error}</ErrorBox>}
       {done && (
         <Notice tone="ok">

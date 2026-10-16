@@ -1,6 +1,7 @@
 import 'server-only';
 import nodemailer from 'nodemailer';
 import path from 'node:path';
+import { parseSender } from '@/lib/contact';
 
 // Sends mail through YOUR SMTP server. Configure it in .env.local:
 //   SMTP_HOST=smtp.yourprovider.com
@@ -73,7 +74,7 @@ export async function sendMail(mail: Mail): Promise<string | null> {
   const c = emailConfig();
   try {
     await transport().sendMail({
-      from: c.from,
+      from: parseSender(c.from) ?? c.from,
       to: mail.to,
       bcc: mail.bcc || undefined,
       replyTo: c.replyTo || undefined,

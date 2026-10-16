@@ -69,7 +69,13 @@ export default async function MembershipPage() {
                 </span>
                 <span className="flex items-center gap-3">
                   <Badge value={m.order_status} label={ORDER_STATUS_LABEL[m.order_status]} />
-                  {m.recurring && !m.canceled && <CancelSubscriptionButton itemId={m.item_id} />}
+                  {m.recurring && !m.canceled && (
+                    <CancelSubscriptionButton
+                      itemId={m.item_id}
+                      until={validThroughText(membershipYear(m.ordered_at))}
+                      timeLeft={timeLeftText(membershipYear(m.ordered_at))}
+                    />
+                  )}
                 </span>
               </li>
             ))}

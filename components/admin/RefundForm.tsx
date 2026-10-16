@@ -1,7 +1,8 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useRef, useState } from 'react';
 import { refundPaymentAction, type RefundState } from '@/app/admin/actions';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { ErrorBox, inputClass, Notice } from '@/components/shop/ui';
 
 /** Amount (pre-filled with everything still refundable) + reason + the Send refund button for one payment. */
@@ -21,17 +22,46 @@ export default function RefundForm({
 }) {
   const [state, action, pending] = useActionState(refundPaymentAction.bind(null, orderId, paymentId), {} as RefundState);
   const label = provider === 'check' ? 'Record refund (check mailed)' : 'Send refund';
+  const formRef = useRef<HTMLFormElement>(null);
+  const confirmed = useRef(false);
+  const [ask, setAsk] = useState<{ amount: string } | null>(null);
+  const via = provider === 'stripe' ? 'Stripe' : provider === 'paypal' ? 'PayPal' : 'check';
   return (
     <form
+      ref={formRef}
       action={action}
       key={state.done ?? 'form'}
       onSubmit={(e) => {
-        const amount = (e.currentTarget.elements.namedItem('amount') as HTMLInputElement).value;
-        const what = provider === 'check' ? 'Record a refund' : `Send a refund through ${provider === 'stripe' ? 'Stripe' : 'PayPal'}`;
-        if (!confirm(`${what} of $${amount}? This cannot be undone.`)) e.preventDefault();
+        // First press: ask. The dialog's confirm button submits again with confirmed set.
+        if (confirmed.current) {
+          confirmed.current = false;
+          return;
+        }
+        e.preventDefault();
+        setAsk({ amount: (e.currentTarget.elements.namedItem('amount') as HTMLInputElement).value });
       }}
       className="mt-3 space-y-2"
     >
+      <ConfirmDialog
+        open={!!ask}
+        title={provider === 'check' ? 'Record this refund?' : 'Send this refund?'}
+        confirmLabel={provider === 'check' ? 'Record refund' : 'Send refund'}
+        cancelLabel="Go back"
+        onCancel={() => setAsk(null)}
+        onConfirm={() => {
+          setAsk(null);
+          confirmed.current = true;
+          formRef.current?.requestSubmit();
+        }}
+      >
+        <p className="text-2xl font-extrabold text-gray-900">${ask?.amount}</p>
+        <p>
+          {provider === 'check'
+            ? 'Only record it after the refund check has been mailed. The customer is emailed.'
+            : `The money goes back to the customer through ${via}, and they are emailed.`}
+        </p>
+        <p className="font-semibold text-red-700">This cannot be undone.</p>
+      </ConfirmDialog>
       {state.error && <ErrorBox>{state.error}</ErrorBox>}
       {state.done && <Notice tone="ok">{state.done}</Notice>}
       <div className="flex flex-wrap items-center gap-2">
