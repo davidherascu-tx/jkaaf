@@ -88,11 +88,23 @@ function AccountMenu() {
         type="button"
         onPointerDown={(e) => (pointer.current = e.pointerType)}
         onClick={() => setOpen((o) => (pointer.current === "mouse" ? true : !o))}
-        aria-label={signedIn ? "Account menu" : "Sign in"}
+        aria-label={signedIn ? `Account menu (signed in as ${me?.name})` : "Sign in"}
         aria-expanded={open}
-        className={`p-2 transition-colors cursor-pointer ${signedIn ? "text-red-600" : "text-gray-700 hover:text-red-600"}`}
+        className="p-2 transition-colors cursor-pointer text-gray-700 hover:text-red-600"
       >
-        <UserIcon />
+        {signedIn ? (
+          <span className="relative inline-flex">
+            <span className="w-7 h-7 rounded-full bg-red-600 text-white text-sm font-bold flex items-center justify-center uppercase">
+              {me?.name?.charAt(0)}
+            </span>
+            <span
+              className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white"
+              aria-hidden
+            />
+          </span>
+        ) : (
+          <UserIcon />
+        )}
       </button>
       {open && (
         <div className="absolute right-0 top-full pt-3 w-56 z-50">

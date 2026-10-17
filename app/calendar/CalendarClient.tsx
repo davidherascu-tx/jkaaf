@@ -19,9 +19,16 @@ interface CalendarData {
 const fmtDay = (ymd: string) =>
   new Date(ymd + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
 
+// "Today" in Texas (Central time), regardless of the visitor's or server's timezone
+const todayInTexas = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
 // Destructure { items } to fix the 'IntrinsicAttributes' error
 export default function CalendarClient({ items }: { items: CalendarData[] }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    const [y, m] = todayInTexas().split('-').map(Number);
+    return new Date(y, m - 1, 1);
+  });
   const [selected, setSelected] = useState<CalendarData | null>(null);
 
   const currentMonth = currentDate.getMonth();
@@ -65,7 +72,7 @@ export default function CalendarClient({ items }: { items: CalendarData[] }) {
       return gridDate >= start && gridDate <= end;
     });
 
-    const isToday = dateString === new Date().toISOString().split('T')[0];
+    const isToday = dateString === todayInTexas();
 
     return (
       <div key={day} className={`border border-gray-200 p-2 min-h-[140px] ${isToday ? 'bg-red-50/30' : 'bg-white hover:bg-gray-50'}`}>

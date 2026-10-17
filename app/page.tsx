@@ -28,7 +28,7 @@ export default async function Home() {
         "slug": slug.current,
         publishedAt,
         excerpt,
-        "imageUrl": mainImage.asset->url
+        "imageUrl": coalesce(mainImage.asset->url, "/jka_news_cover_43.webp")
       }`
     )
   ]);
