@@ -24,6 +24,7 @@ function toProduct(r: Row): Product {
     sale_ends_on: (r.sale_ends_on as string) ?? '',
     stock: (r.stock as number | null) ?? null,
     free_shipping: r.free_shipping !== false,
+    shipping_cents: Number(r.shipping_cents ?? 0),
     ships_note: (r.ships_note as string) ?? '',
     options: (r.options as Product['options']) ?? [],
     physical: !!r.physical,
@@ -67,12 +68,13 @@ export async function saveProduct(id: number | null, p: ProductInput): Promise<n
     p.active,
     p.ships_note,
     p.sort,
+    p.shipping_cents,
   ];
   if (id === null) {
     const r = await queryOne(
       `insert into products (name, slug, description, price_cents, price_note, image_url, sale_price_cents, sale_ends_on,
-         stock, free_shipping, options, physical, requires_dojo_approval, active, ships_note, sort)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, $16) returning id`,
+         stock, free_shipping, options, physical, requires_dojo_approval, active, ships_note, sort, shipping_cents)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, $16, $17) returning id`,
       values,
     );
     return r!.id as number;
@@ -80,8 +82,8 @@ export async function saveProduct(id: number | null, p: ProductInput): Promise<n
   await query(
     `update products set name = $1, slug = $2, description = $3, price_cents = $4, price_note = $5, image_url = $6,
        sale_price_cents = $7, sale_ends_on = $8, stock = $9, free_shipping = $10, options = $11::jsonb, physical = $12,
-       requires_dojo_approval = $13, active = $14, ships_note = $15, sort = $16
-     where id = $17`,
+       requires_dojo_approval = $13, active = $14, ships_note = $15, sort = $16, shipping_cents = $17
+     where id = $18`,
     [...values, id],
   );
   return id;
@@ -112,6 +114,8 @@ export interface PricedLine {
   lines: { label: string; value: string }[];
   recurring: boolean;
   needsShipping: boolean;
+  /** Part of unitCents that is the product's shipping fee (per unit). */
+  shippingCents: number;
 }
 
 /** Validates selections against the product definition and computes the unit price. */
@@ -153,7 +157,10 @@ export function priceItem(
     }
     lines.push({ label: opt.label, value });
   }
-  return { unitCents: unit, lines, recurring, needsShipping };
+  // The product's own shipping fee applies per item whenever it ships (not for pick-up).
+  const shippingCents = needsShipping ? product.shipping_cents : 0;
+  unit += shippingCents;
+  return { unitCents: unit, lines, recurring, needsShipping, shippingCents };
 }
 
 /** Has an admin approved this member's JKA/AF Individual Membership? Guests never have. */
@@ -320,6 +327,8 @@ export interface OrderItem {
   selections: { label: string; value: string }[];
   recurring: boolean;
   free_shipping: boolean;
+  /** Shipping fee included in unit_cents (per unit). */
+  ship_cents: number;
   /** Physical products are shipped; the rest (memberships, renewals) are just completed. */
   physical: boolean;
   fulfillment: 'pending' | 'shipped' | 'fulfilled';
@@ -368,6 +377,7 @@ export async function placeOrder(
       selections: p.lines,
       recurring: p.recurring,
       free_shipping: l.product.free_shipping,
+      ship_cents: p.shippingCents,
     };
   });
   try {
@@ -457,6 +467,7 @@ export async function getOrder(id: number): Promise<{ order: Order; items: Order
     selections: (r.selections ?? []) as OrderItem['selections'],
     recurring: !!r.recurring,
     free_shipping: r.free_shipping !== false,
+    ship_cents: Number(r.ship_cents ?? 0),
     physical: !!r.physical || ((r.selections ?? []) as { label: string }[]).some((x) => /sticker|card/i.test(x.label)),
     fulfillment: r.fulfillment as OrderItem['fulfillment'],
     tracking: (r.tracking as string) ?? '',

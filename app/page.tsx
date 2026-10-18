@@ -1,4 +1,6 @@
 import HeroSlider from '@/components/HeroSlider';
+import Reveal from '@/components/Reveal';
+import ParallaxBg from '@/components/ParallaxBg';
 import { client } from '@/sanity/client';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -48,17 +50,21 @@ export default async function Home() {
       {/* Intro */}
       <section className="bg-white py-20 lg:py-28">
         <div className="max-w-[90rem] mx-auto px-5 sm:px-8 lg:px-12">
-          <span className="text-red-600 font-bold tracking-widest uppercase text-sm mb-5 block">
-            About Our Federation
-          </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight max-w-4xl">
-            Welcome to <span className="text-red-600">JKA/AF.</span>
-          </h2>
+          <Reveal>
+            <span className="text-red-600 font-bold tracking-widest uppercase text-sm mb-5 block">
+              About Our Federation
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight max-w-4xl">
+              Welcome to <span className="text-red-600">JKA/AF.</span>
+            </h2>
+          </Reveal>
 
           <div className="mt-14 grid lg:grid-cols-12 gap-12 lg:gap-20">
-            <p className="lg:col-span-7 text-lg sm:text-xl text-gray-600 leading-relaxed">
+            <Reveal className="lg:col-span-7" delay={100}>
+            <p className="text-lg sm:text-xl text-gray-600 leading-relaxed">
               The Japan Karate Association/American Federation is an affiliation of JKA clubs across the Americas, founded by Sensei Takayuki Mikami (9th dan JKA) in 2009. We promote top quality traditional karate through hosting regular training, competition &amp; instructor course events and conducting rank and qualification examinations affiliated with the Japan Karate Association headquartered in Tokyo, Japan.
             </p>
+            </Reveal>
 
             <dl className="lg:col-span-5 grid grid-cols-2 gap-x-8 gap-y-10 content-start">
               {[
@@ -66,11 +72,11 @@ export default async function Home() {
                 ['9th Dan', 'Founder, Sensei Mikami'],
                 ['Americas', 'Affiliated JKA clubs'],
                 ['Tokyo', 'JKA headquarters'],
-              ].map(([k, v]) => (
-                <div key={k} className="border-t border-gray-300 pt-4">
+              ].map(([k, v], i) => (
+                <Reveal key={k} delay={150 + i * 120} className="border-t border-gray-300 pt-4">
                   <dt className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">{k}</dt>
                   <dd className="mt-1 text-base text-gray-500">{v}</dd>
-                </div>
+                </Reveal>
               ))}
             </dl>
           </div>
@@ -80,20 +86,20 @@ export default async function Home() {
       {/* Featured Event */}
       <section className="bg-gray-900 text-white py-20 lg:py-28">
         <div className="max-w-[90rem] mx-auto px-5 sm:px-8 lg:px-12">
-          <div className="flex flex-wrap items-end justify-between gap-6 mb-14">
+          <Reveal className="flex flex-wrap items-end justify-between gap-6 mb-14">
             <h2 className="text-3xl sm:text-4xl font-extrabold leading-tight">Next up.</h2>
             <Link href="/events" className="text-base font-bold text-white hover:text-red-100 underline decoration-red-600 decoration-2 underline-offset-8 transition-colors">
               View all events &rarr;
             </Link>
-          </div>
+          </Reveal>
 
           {events && events.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
               {events.map((event, idx) => (
+                <Reveal key={event._id} delay={idx * 140} className="h-full">
                 <Link
-                  key={event._id}
                   href={`/events/${event._id}`}
-                  className={`group flex flex-col rounded-3xl p-7 lg:p-8 transition-transform duration-500 hover:-translate-y-1 ${
+                  className={`group flex h-full flex-col rounded-3xl p-7 lg:p-8 transition-transform duration-500 hover:-translate-y-1 ${
                     idx === 0 ? 'bg-red-600' : 'bg-white/5 border border-white/15 hover:border-white/40'
                   }`}
                 >
@@ -117,6 +123,7 @@ export default async function Home() {
                     </span>
                   </div>
                 </Link>
+                </Reveal>
               ))}
             </div>
           ) : (
@@ -130,17 +137,18 @@ export default async function Home() {
       {/* Latest News */}
       <section className="py-20 lg:py-28">
         <div className="max-w-[90rem] mx-auto px-5 sm:px-8 lg:px-12">
-          <div className="flex flex-wrap items-end justify-between gap-6 mb-14">
+          <Reveal className="flex flex-wrap items-end justify-between gap-6 mb-14">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 leading-tight">Latest news.</h2>
             <Link href="/news" className="text-base font-bold text-gray-900 hover:text-red-600 underline decoration-red-600 decoration-2 underline-offset-8 transition-colors">
               View all news &rarr;
             </Link>
-          </div>
+          </Reveal>
 
           {newsItems && newsItems.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-              {newsItems.map((item) => (
-                <Link key={item._id} href={`/news/${item.slug}`} className="group flex flex-col">
+              {newsItems.map((item, idx) => (
+                <Reveal key={item._id} delay={idx * 140} className="h-full">
+                <Link href={`/news/${item.slug}`} className="group flex h-full flex-col">
                   <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-200">
                     {item.imageUrl && (
                       <Image
@@ -160,6 +168,7 @@ export default async function Home() {
                   </h3>
                   <p className="mt-2 text-base text-gray-500 line-clamp-2">{item.excerpt}</p>
                 </Link>
+                </Reveal>
               ))}
             </div>
           ) : (
@@ -171,19 +180,42 @@ export default async function Home() {
       </section>
 
       {/* CTA */}
-      <section className="bg-red-600 text-white py-20 lg:py-28">
-        <div className="max-w-[90rem] mx-auto px-5 sm:px-8 lg:px-12 text-center">
+      <section id="join" className="relative overflow-hidden bg-red-600 text-white py-20 lg:py-28">
+        <ParallaxBg speed={-0.15}>
+          <div aria-hidden className="flex h-full items-center justify-center select-none text-[22rem] sm:text-[30rem] font-extrabold leading-none text-white/[0.06]">
+            空手
+          </div>
+        </ParallaxBg>
+        <Reveal className="relative max-w-[90rem] mx-auto px-5 sm:px-8 lg:px-12 text-center">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight">Ready to begin?</h2>
           <p className="mt-5 text-lg sm:text-xl text-white/85 max-w-xl mx-auto">
-            Become a member and train with JKA/AF dojos across the Americas.
+            Become a member and train with JKA/AF dojos across the Americas. Choose the membership that fits you.
           </p>
-          <Link
-            href="/membership"
-            className="mt-10 inline-flex items-center gap-3 bg-white text-gray-900 px-8 py-4 rounded-full text-base font-bold hover:bg-gray-900 hover:text-white transition-colors"
-          >
-            Join JKA/AF <span aria-hidden>&rarr;</span>
-          </Link>
-        </div>
+          <div className="mt-10 grid sm:grid-cols-2 gap-5 max-w-3xl mx-auto text-left">
+            <Link
+              href="/shop/jkaaf-individual-membership"
+              className="group rounded-3xl bg-white text-gray-900 p-7 transition-transform duration-500 hover:-translate-y-1"
+            >
+              <p className="text-sm font-bold uppercase tracking-widest text-red-600">For one person</p>
+              <h3 className="mt-2 text-2xl font-extrabold">Individual Membership</h3>
+              <p className="mt-2 text-base text-gray-600">Join JKA/AF as a student, instructor or member of any club.</p>
+              <span className="mt-5 inline-flex items-center gap-2 font-bold group-hover:text-red-600 transition-colors">
+                Join as an individual <span aria-hidden>&rarr;</span>
+              </span>
+            </Link>
+            <Link
+              href="/membership"
+              className="group rounded-3xl bg-gray-900 text-white p-7 transition-transform duration-500 hover:-translate-y-1"
+            >
+              <p className="text-sm font-bold uppercase tracking-widest text-red-400">For a club</p>
+              <h3 className="mt-2 text-2xl font-extrabold">Dojo Membership</h3>
+              <p className="mt-2 text-base text-white/75">Affiliate your karate club with the Japan Karate Association/American Federation.</p>
+              <span className="mt-5 inline-flex items-center gap-2 font-bold group-hover:text-red-400 transition-colors">
+                Join as a dojo <span aria-hidden>&rarr;</span>
+              </span>
+            </Link>
+          </div>
+        </Reveal>
       </section>
     </div>
   );

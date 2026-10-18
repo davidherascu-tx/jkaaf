@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getCartOwner } from "@/lib/cart";
 import { getCart, type PricedLine } from "@/lib/shop";
-import { formatCents } from "@/lib/money";
+import { formatCents, shippingText } from "@/lib/money";
 import CartItemActions from "@/components/shop/CartItemActions";
 import {
   Card,
@@ -19,6 +19,11 @@ export default async function CartPage() {
   const hasError = cart.some((l) => "error" in l.priced);
   const total = cart.reduce(
     (s, l) => s + ("error" in l.priced ? 0 : l.priced.unitCents * l.quantity),
+    0,
+  );
+
+  const shipTotal = cart.reduce(
+    (s, l) => s + ("error" in l.priced ? 0 : l.priced.shippingCents * l.quantity),
     0,
   );
 
@@ -67,7 +72,7 @@ export default async function CartPage() {
                         {"error" in p
                           ? "—"
                           : formatCents(
-                              (p as PricedLine).unitCents * l.quantity,
+                              ((p as PricedLine).unitCents - (p as PricedLine).shippingCents) * l.quantity,
                             )}
                       </p>
                       <CartItemActions itemId={l.id} quantity={l.quantity} />
@@ -78,19 +83,19 @@ export default async function CartPage() {
             })}
           </div>
           <Card className="!p-5 lg:sticky lg:top-32">
-            <div className="flex justify-between text-xl font-extrabold mb-2">
+            <div className="flex justify-between text-gray-700 mb-1">
+              <span>Items</span>
+              <span className="font-semibold">{formatCents(total - shipTotal)}</span>
+            </div>
+            <div className="flex justify-between text-gray-700 mb-2">
+              <span>Shipping</span>
+              <span className={`font-semibold ${shipTotal === 0 && cart.every((l) => l.product.free_shipping) ? "text-green-700" : "text-gray-700"}`}>
+                {shippingText(shipTotal, cart.every((l) => l.product.free_shipping))}
+              </span>
+            </div>
+            <div className="flex justify-between text-xl font-extrabold border-t border-gray-200 pt-2">
               <span>Total</span>
               <span>{formatCents(total)}</span>
-            </div>
-            <div className="flex justify-between text-gray-700">
-              <span>Shipping</span>
-              {cart.every((l) => l.product.free_shipping) ? (
-                <span className="font-semibold text-green-700">Free</span>
-              ) : (
-                <span className="font-semibold text-gray-700">
-                  Included in item prices
-                </span>
-              )}
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
               {hasError ? (

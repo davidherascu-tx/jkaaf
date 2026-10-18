@@ -69,7 +69,9 @@ export async function loginAction(_prev: FormState, fd: FormData): Promise<FormS
   }
   await createSession(row.id);
   await adoptGuestCart(row.id);
-  redirect(safeNext(fd.get('next')));
+  // Admins go straight to the dashboard unless they were heading somewhere specific.
+  const next = safeNext(fd.get('next'));
+  redirect(row.role === 'admin' && next === '/account' ? '/admin' : next);
 }
 
 export interface PasswordState {

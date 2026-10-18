@@ -16,6 +16,7 @@ export default async function DetailsPage() {
         <ProfileForm user={user} />
       </Card>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
       <Card>
         <h3 className="text-lg font-bold text-gray-900 mb-1">Email address</h3>
         <p className="text-sm text-gray-600 mb-4">
@@ -38,6 +39,7 @@ export default async function DetailsPage() {
         <h3 className="text-lg font-bold text-gray-900 mb-4">Change password</h3>
         <ChangePasswordForm />
       </Card>
+      </div>
     </>
   );
 }

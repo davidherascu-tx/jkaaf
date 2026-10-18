@@ -32,6 +32,8 @@ export interface Product {
   sort: number;
   /** False when shipping is charged on this product (shown to shoppers; the fee is a choice price). */
   free_shipping: boolean;
+  /** Shipping fee per item, added to the price when the item ships (not for pick-up). 0 = free shipping. */
+  shipping_cents: number;
   /** Pre-order message such as "Expected to ship by June 2027"; blank = ships normally. */
   ships_note: string;
   /** Units in stock; null = not tracked (unlimited). */

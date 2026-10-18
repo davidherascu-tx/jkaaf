@@ -60,8 +60,8 @@ export function Field({
         {label}
         {required && <span className="text-red-600 ml-0.5">*</span>}
       </label>
-      {hint && <p className="text-xs text-gray-500 mb-1.5">{hint}</p>}
       {children}
+      {hint && <p className="text-xs text-gray-500 mt-1.5">{hint}</p>}
     </div>
   );
 }

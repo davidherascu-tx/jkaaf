@@ -1,5 +1,5 @@
 import 'server-only';
-import { formatCents } from '@/lib/money';
+import { formatCents, shippingText } from '@/lib/money';
 import { sendMail } from '@/lib/email';
 import { emailLayout, emailNote } from '@/lib/emailTemplate';
 import { getOrder } from '@/lib/shop';
@@ -17,7 +17,7 @@ export function orderSummaryHtml({ order, items }: OrderData, totalLabel = 'Tota
   const address = [order.ship_name, order.ship_address, order.ship_address ? `${order.ship_city}, ${order.ship_state} ${order.ship_zip}` : '']
     .filter((l) => l.trim())
     .join('\n');
-  const shippingLabel = items.every((i) => i.free_shipping) ? 'Free' : 'Included in item prices';
+  const shippingLabel = shippingText(items.reduce((n, i) => n + i.ship_cents * i.quantity, 0), items.every((i) => i.free_shipping));
   const optionText = (i: (typeof items)[number]) => i.selections.map((s) => `${s.label}: ${s.value}`).join(' · ');
 
   const rows = items
@@ -27,8 +27,8 @@ export function orderSummaryHtml({ order, items }: OrderData, totalLabel = 'Tota
       return `<tr>
           <td style="${TD}">${esc(i.name)}${sub.map((s) => `<br><span style="color:#6b7280;font-size:13px">${esc(s)}</span>`).join('')}</td>
           <td style="${TD};text-align:center">${i.quantity}</td>
-          <td style="${TD};text-align:right">${formatCents(i.unit_cents)}</td>
-          <td style="${TD};text-align:right">${formatCents(i.unit_cents * i.quantity)}</td>
+          <td style="${TD};text-align:right">${formatCents(i.unit_cents - i.ship_cents)}</td>
+          <td style="${TD};text-align:right">${formatCents((i.unit_cents - i.ship_cents) * i.quantity)}</td>
         </tr>`;
     })
     .join('');
@@ -65,13 +65,13 @@ export function orderSummaryHtml({ order, items }: OrderData, totalLabel = 'Tota
 /** Plain-text version of the same invoice block. */
 export function orderSummaryText({ order, items }: OrderData, totalLabel = 'Total due'): string[] {
   const date = new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const shippingLabel = items.every((i) => i.free_shipping) ? 'Free' : 'Included in item prices';
+  const shippingLabel = shippingText(items.reduce((n, i) => n + i.ship_cents * i.quantity, 0), items.every((i) => i.free_shipping));
   return [
     `INVOICE - Order #${order.id} - ${date}`,
     '',
     ...items.map((i) => {
       const opts = i.selections.map((s) => `${s.label}: ${s.value}`).join(', ');
-      return `${i.quantity} x ${i.name}${opts ? ` (${opts})` : ''}  ${formatCents(i.unit_cents * i.quantity)}`;
+      return `${i.quantity} x ${i.name}${opts ? ` (${opts})` : ''}  ${formatCents((i.unit_cents - i.ship_cents) * i.quantity)}`;
     }),
     '',
     `Shipping: ${shippingLabel}`,

@@ -61,7 +61,10 @@ export async function getCardDetails(paymentIntentId: string): Promise<{ brand: 
  * Returns the page to send the customer to; the order is marked paid later by the webhook.
  */
 export async function createCheckoutSession(order: Order, items: OrderItem[], email: string, origin: string) {
-  const lines = items.map((i) => ({ name: i.name, unit: i.unit_cents, qty: i.quantity }));
+  // Shipping is its own line on the Stripe page (the product line is the price without shipping).
+  const lines = items.map((i) => ({ name: i.name, unit: i.unit_cents - i.ship_cents, qty: i.quantity }));
+  const shippingTotal = items.reduce((n, i) => n + i.ship_cents * i.quantity, 0);
+  if (shippingTotal > 0) lines.push({ name: 'Shipping', unit: shippingTotal, qty: 1 });
   const itemsTotal = lines.reduce((s, l) => s + l.unit * l.qty, 0);
   // Anything on top of the items (sales tax) becomes its own line so the Stripe total always equals the order total.
   const extra = order.total_cents - itemsTotal;

@@ -1,4 +1,4 @@
-import { formatCents } from '@/lib/money';
+import { formatCents, shippingText } from '@/lib/money';
 import { fulfillmentLabel, ORDER_STATUS_LABEL, type Order, type OrderItem } from '@/lib/shop';
 import { Badge, Card } from '@/components/shop/ui';
 import { METHOD_SHORT } from '@/lib/payments/config';
@@ -47,18 +47,18 @@ export default function OrderView({ order, items }: { order: Order; items: Order
                 </p>
               )}
             </div>
-            <p className="font-semibold">{formatCents(i.unit_cents * i.quantity)}</p>
+            <p className="font-semibold">{formatCents((i.unit_cents - i.ship_cents) * i.quantity)}</p>
           </li>
         ))}
       </ul>
       <div className="border-t border-gray-200 pt-3 mt-1 space-y-1">
         <div className="flex justify-between text-sm text-gray-700">
           <span>Shipping</span>
-          {items.every((i) => i.free_shipping) ? (
-              <span className="font-semibold text-green-700">Free</span>
-            ) : (
-              <span className="font-semibold text-gray-700">Included in item prices</span>
-            )}
+          {(() => {
+            const ship = items.reduce((n, i) => n + i.ship_cents * i.quantity, 0);
+            const free = ship === 0 && items.every((i) => i.free_shipping);
+            return <span className={`font-semibold ${free ? 'text-green-700' : 'text-gray-700'}`}>{shippingText(ship, items.every((i) => i.free_shipping))}</span>;
+          })()}
         </div>
         {!!order.refunded_cents && (
           <div className="flex justify-between text-sm font-semibold text-gray-700">

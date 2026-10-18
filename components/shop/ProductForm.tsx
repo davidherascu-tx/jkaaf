@@ -23,6 +23,7 @@ export default function ProductForm({ product }: { product: Product | null }) {
     stock: product?.stock != null ? String(product.stock) : '',
     physical: product?.physical ?? false,
     free_shipping: product?.free_shipping ?? true,
+    shipping: product?.shipping_cents ? (product.shipping_cents / 100).toFixed(2) : '',
     requires_dojo_approval: product?.requires_dojo_approval ?? false,
     active: product?.active ?? true,
     ships_note: product?.ships_note ?? '',
@@ -71,8 +72,14 @@ export default function ProductForm({ product }: { product: Product | null }) {
           <Field label="Price (USD)" required>
             <input value={v.price} onChange={(e) => set('price', e.target.value)} inputMode="decimal" required className={inputClass} />
           </Field>
-          <Field label="Price note" hint='e.g. "per year"'>
-            <input value={v.price_note} onChange={(e) => set('price_note', e.target.value)} className={inputClass} />
+          <Field label="Shipping cost (USD)" hint="Added per item when it is shipped (not for pick-up). Blank or 0 = free shipping.">
+            <input
+              value={v.shipping}
+              onChange={(e) => setV((p) => ({ ...p, shipping: e.target.value, free_shipping: !(parseFloat(e.target.value) > 0) }))}
+              inputMode="decimal"
+              placeholder="0.00"
+              className={inputClass}
+            />
           </Field>
           <Field label="Stock quantity" hint="Blank = not tracked.">
             <input value={v.stock} onChange={(e) => set('stock', e.target.value)} inputMode="numeric" className={inputClass} />
@@ -90,6 +97,11 @@ export default function ProductForm({ product }: { product: Product | null }) {
             hint="Sale price applies through the end of this day (Central time), then the regular price returns automatically."
           >
             <input type="date" value={v.sale_ends_on} onChange={(e) => set('sale_ends_on', e.target.value)} className={inputClass} />
+          </Field>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
+          <Field label="Price note" hint='e.g. "per year"'>
+            <input value={v.price_note} onChange={(e) => set('price_note', e.target.value)} className={inputClass} />
           </Field>
         </div>
         <Field label="Pre-order note" hint='e.g. "Expected to ship by June 2027". When set, the button says Pre-order. Blank = ships normally.'>

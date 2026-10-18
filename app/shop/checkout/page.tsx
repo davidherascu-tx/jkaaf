@@ -4,7 +4,7 @@ import { getAddresses, sameAddress } from "@/lib/addresses";
 import { enabledMethods, METHOD_LABEL } from "@/lib/payments/config";
 import { getCartOwner } from "@/lib/cart";
 import { cartNeedsShipping, getCart } from "@/lib/shop";
-import { formatCents } from "@/lib/money";
+import { formatCents, shippingText } from "@/lib/money";
 import CheckoutForm from "@/components/shop/CheckoutForm";
 import {
   CheckoutProvider,
@@ -26,6 +26,10 @@ export default async function CheckoutPage() {
     redirect("/shop/cart");
   const total = cart.reduce(
     (s, l) => s + ("error" in l.priced ? 0 : l.priced.unitCents * l.quantity),
+    0,
+  );
+  const shipTotal = cart.reduce(
+    (s, l) => s + ("error" in l.priced ? 0 : l.priced.shippingCents * l.quantity),
     0,
   );
 
@@ -74,20 +78,16 @@ export default async function CheckoutPage() {
                     </span>
                     <span className="font-semibold">
                       {!("error" in l.priced) &&
-                        formatCents(l.priced.unitCents * l.quantity)}
+                        formatCents((l.priced.unitCents - l.priced.shippingCents) * l.quantity)}
                     </span>
                   </li>
                 ))}
               </ul>
               <div className="border-t border-gray-200 mt-4 pt-3 flex justify-between text-sm text-gray-700">
                 <span>Shipping</span>
-                {cart.every((l) => l.product.free_shipping) ? (
-                  <span className="font-semibold text-green-700">Free</span>
-                ) : (
-                  <span className="font-semibold text-gray-700">
-                    Included in item prices
-                  </span>
-                )}
+                <span className={`font-semibold ${shipTotal === 0 && cart.every((l) => l.product.free_shipping) ? "text-green-700" : "text-gray-700"}`}>
+                  {shippingText(shipTotal, cart.every((l) => l.product.free_shipping))}
+                </span>
               </div>
               <CheckoutTotals />
               <PlaceOrderButton />

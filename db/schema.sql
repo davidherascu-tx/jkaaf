@@ -44,6 +44,8 @@ create table if not exists products (
   sort integer not null default 0,
   created_at timestamptz not null default now()
 );
+-- Shipping fee per item, added to the price when the item is shipped (0 = free shipping).
+alter table products add column if not exists shipping_cents integer not null default 0;
 
 create table if not exists cart_items (
   id bigint generated always as identity primary key,
@@ -84,6 +86,8 @@ create table if not exists order_items (
   recurring boolean not null default false,
   free_shipping boolean not null default true
 );
+-- Shipping fee included in unit_cents, per unit (shown as its own Shipping line on invoices).
+alter table order_items add column if not exists ship_cents integer not null default 0;
 create index if not exists order_items_order_idx on order_items (order_id);
 
 create table if not exists dojo_applications (
@@ -142,7 +146,7 @@ begin
   values (p_user_id, p_total, p_ship_name, p_ship_address, p_ship_city, p_ship_state, p_ship_zip, p_notes)
   returning id into v_order_id;
 
-  insert into order_items (order_id, product_id, name, unit_cents, quantity, selections, recurring, free_shipping)
+  insert into order_items (order_id, product_id, name, unit_cents, quantity, selections, recurring, free_shipping, ship_cents)
   select v_order_id,
          (i ->> 'product_id')::bigint,
          i ->> 'name',
@@ -150,7 +154,8 @@ begin
          (i ->> 'quantity')::integer,
          coalesce(i -> 'selections', '[]'::jsonb),
          coalesce((i ->> 'recurring')::boolean, false),
-         coalesce((i ->> 'free_shipping')::boolean, true)
+         coalesce((i ->> 'free_shipping')::boolean, true),
+         coalesce((i ->> 'ship_cents')::integer, 0)
   from jsonb_array_elements(p_items) i;
 
   delete from cart_items where user_id = p_user_id;

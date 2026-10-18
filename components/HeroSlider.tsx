@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import ParallaxBg from '@/components/ParallaxBg';
 
 const slides = [
   {
@@ -32,18 +33,20 @@ export default function HeroSlider() {
 
   return (
     <section className="relative min-h-[88vh] w-full bg-gray-900 text-white overflow-hidden flex items-end">
-      {/* Crossfading background images */}
-      {slides.map((slide, i) => (
-        <Image
-          key={slide.id}
-          src={slide.img}
-          alt=""
-          fill
-          priority={i === 0}
-          sizes="100vw"
-          className={`object-cover transition-opacity duration-1000 ${i === current ? 'opacity-100' : 'opacity-0'}`}
-        />
-      ))}
+      {/* Crossfading background images: they drift slower than the page (parallax) and slowly zoom */}
+      <ParallaxBg speed={0.3}>
+        {slides.map((slide, i) => (
+          <Image
+            key={slide.id}
+            src={slide.img}
+            alt=""
+            fill
+            priority={i === 0}
+            sizes="100vw"
+            className={`object-cover transition-[opacity,transform] duration-[7000ms] ease-out ${i === current ? 'opacity-100 scale-110' : 'opacity-0 scale-100'}`}
+          />
+        ))}
+      </ParallaxBg>
       <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-gray-900/20" />
       <div className="absolute inset-0 bg-gradient-to-r from-gray-900/70 via-transparent to-transparent" />
 
@@ -73,7 +76,7 @@ export default function HeroSlider() {
 
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <Link
-            href="/membership"
+            href="#join"
             className="inline-flex items-center gap-3 bg-red-600 text-white px-7 py-3.5 rounded-full text-base font-bold hover:bg-white hover:text-gray-900 transition-colors"
           >
             Join Now <span aria-hidden>&rarr;</span>

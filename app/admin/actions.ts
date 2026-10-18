@@ -52,6 +52,8 @@ export interface ProductPayload {
   stock: string;
   physical: boolean;
   free_shipping: boolean;
+  /** Shipping fee per item in dollars; blank or 0 = free shipping. */
+  shipping: string;
   requires_dojo_approval: boolean;
   active: boolean;
   ships_note: string;
@@ -78,6 +80,8 @@ export async function saveProductAction(p: ProductPayload): Promise<{ error: str
   const salePrice = p.sale_price.trim() ? parseDollars(p.sale_price) : null;
   if (p.sale_price.trim() && salePrice === null) return { error: 'Sale price must be a dollar amount like 99 or 99.00.' };
   if (salePrice !== null && !/^\d{4}-\d{2}-\d{2}$/.test(p.sale_ends_on)) return { error: 'Choose the date the sale ends.' };
+  const shippingCents = p.shipping.trim() ? parseDollars(p.shipping) : 0;
+  if (shippingCents === null) return { error: 'Shipping cost must be a dollar amount like 1 or 1.00.' };
   if (salePrice !== null && salePrice >= cents) return { error: 'The sale price must be lower than the regular price.' };
 
   const image = p.image_url.trim();
@@ -124,7 +128,8 @@ export async function saveProductAction(p: ProductPayload): Promise<{ error: str
     stock,
     options,
     physical: p.physical,
-    free_shipping: p.free_shipping,
+    free_shipping: p.free_shipping && shippingCents === 0,
+    shipping_cents: shippingCents,
     requires_dojo_approval: p.requires_dojo_approval,
     active: p.active,
     ships_note: p.ships_note.trim().slice(0, 120),

@@ -24,9 +24,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <div className="space-y-5">
           <PriceTag product={product} size="lg" />
           <p className="text-gray-700 leading-relaxed">{product.description}</p>
-          <p className="text-sm text-gray-600">
-            {product.free_shipping ? 'Free shipping' : 'Shipping fee applies when shipped (see Delivery option)'}
-          </p>
+          {product.shipping_cents === 0 && (
+            <p className="text-sm text-gray-600">{product.free_shipping ? 'Free shipping' : 'Shipping fee applies when shipped (see Delivery option)'}</p>
+          )}
 
           {product.stock !== null && product.stock > 0 && product.stock <= 5 && (
             <p className="text-sm font-bold text-amber-700">Only {product.stock} left in stock</p>

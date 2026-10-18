@@ -4,7 +4,7 @@ import path from 'node:path';
 import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { query } from '@/lib/db';
 import { getAddresses } from '@/lib/addresses';
-import { formatCents } from '@/lib/money';
+import { formatCents, shippingText } from '@/lib/money';
 import { CONTACT_PHONE, contactEmail } from '@/lib/contact';
 import { METHOD_LABEL } from '@/lib/payments/config';
 import { fulfillmentLabel, type Order, type OrderItem } from '@/lib/shop';
@@ -167,8 +167,8 @@ export async function buildInvoicePdf(order: Order, items: OrderItem[]): Promise
     ensure((nameLines.length + subLines.length) * 13 + 14);
     nameLines.forEach((l, n) => text(l, M, y - n * 13, 10, bold));
     right(String(i.quantity), colQty, y);
-    right(formatCents(i.unit_cents), colPrice, y);
-    right(formatCents(i.unit_cents * i.quantity), colAmt, y);
+    right(formatCents(i.unit_cents - i.ship_cents), colPrice, y);
+    right(formatCents((i.unit_cents - i.ship_cents) * i.quantity), colAmt, y);
     let yy = y - nameLines.length * 13;
     for (const l of subLines) {
       text(l, M, yy + 2, 8.5, regular, MUTED);
@@ -181,7 +181,7 @@ export async function buildInvoicePdf(order: Order, items: OrderItem[]): Promise
 
   // Totals
   ensure(90);
-  const shippingLabel = items.every((i) => i.free_shipping) ? 'Free' : 'Included in item prices';
+  const shippingLabel = shippingText(items.reduce((n, i) => n + i.ship_cents * i.quantity, 0), items.every((i) => i.free_shipping));
   text('Shipping', colQty - 90, y, 10, regular, MUTED);
   right(shippingLabel, colAmt, y);
   y -= 8;
