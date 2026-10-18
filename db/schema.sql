@@ -391,6 +391,9 @@ create table if not exists payments (
   refunded_cents integer not null default 0,
   created_at timestamptz not null default now()
 );
+-- Card used for a Stripe payment (brand and last four digits only, never the full number).
+alter table payments add column if not exists card_brand text not null default '';
+alter table payments add column if not exists card_last4 text not null default '';
 create index if not exists payments_order_idx on payments (order_id);
 create unique index if not exists payments_provider_ref_key on payments (provider, provider_ref) where provider_ref <> '';
 
@@ -423,3 +426,19 @@ alter table orders add column if not exists provider_ref text not null default '
 insert into payments (order_id, provider, amount_cents)
 select o.id, 'check', o.total_cents from orders o
  where o.status in ('paid', 'completed') and not exists (select 1 from payments p where p.order_id = o.id);
+
+-- Customer requests on an order: cancel (paid, nothing shipped yet), return, or refund. The shop owner approves or declines.
+create table if not exists order_requests (
+  id bigint generated always as identity primary key,
+  order_id bigint not null references orders (id),
+  user_id bigint not null references users (id),
+  type text not null check (type in ('cancel', 'return', 'refund')),
+  reason text not null default '',
+  status text not null default 'pending' check (status in ('pending', 'approved', 'declined')),
+  admin_note text not null default '',
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz
+);
+create index if not exists order_requests_order_idx on order_requests (order_id);
+-- At most one open request per order.
+create unique index if not exists order_requests_one_pending on order_requests (order_id) where status = 'pending';

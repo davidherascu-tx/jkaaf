@@ -4,9 +4,12 @@ import { requireUser } from '@/lib/auth';
 import { getOrder } from '@/lib/shop';
 import { formatCents } from '@/lib/money';
 import OrderView from '@/components/shop/OrderView';
+import OrderRequests from '@/components/shop/OrderRequests';
+import { listOrderRequests, orderActions } from '@/lib/orderRequests';
 import { Notice, PageShell, primaryBtn, secondaryBtn } from '@/components/shop/ui';
 import { enabledMethods, METHOD_LABEL } from '@/lib/payments/config';
 import { payNowAction } from '@/app/shop/actions';
+import { confirmStripePayment } from '@/lib/payments';
 
 export default async function OrderPage({
   params,
@@ -18,10 +21,16 @@ export default async function OrderPage({
   const { id } = await params;
   const { placed, paid, payerror } = await searchParams;
   const user = await requireUser(`/shop/orders/${id}`);
+  // No webhook needed: ask Stripe whether this order's card payment went through (only counts once).
+  if (/^\d+$/.test(id)) await confirmStripePayment(Number(id));
   const found = /^\d+$/.test(id) ? await getOrder(Number(id)) : null;
   // Customers can only see their own orders; admins can see all.
   if (!found || (found.order.user_id !== user.id && user.role !== 'admin')) notFound();
   const { order, items } = found;
+
+  const requests = await listOrderRequests(order.id);
+  const actions = orderActions(order, items, requests.some((r) => r.status === 'pending'));
+  const isOwner = order.user_id === user.id;
 
   const payableTo = process.env.CHECK_PAYABLE_TO || 'JKA/AF';
   const mailTo = process.env.CHECK_MAIL_TO || 'Please contact JKA/AF for the mailing address.';
@@ -56,6 +65,7 @@ export default async function OrderPage({
           </div>
         )}
         <OrderView order={order} items={items} />
+        {isOwner && <OrderRequests orderId={order.id} actions={actions} requests={requests} />}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link href="/account/orders" className="text-sm font-semibold text-gray-600 hover:text-red-600">
             ← All orders

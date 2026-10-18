@@ -13,7 +13,8 @@ import { formatCents, parseDollars } from '@/lib/money';
 import { netPaidCents, recordCheckPayment, refundPayment, removeCheckPayment } from '@/lib/payments';
 import { CARRIERS } from '@/lib/carriers';
 import { normalizeUsState } from '@/lib/regions';
-import { sendItemUpdateEmail, sendOrderCancelledEmail, sendOrderCompletedEmail, sendPaymentReceivedEmail } from '@/lib/customerEmails';
+import { getOrderRequest, resolveOrderRequest } from '@/lib/orderRequests';
+import { sendOrderRequestResultEmail, sendItemUpdateEmail, sendOrderCancelledEmail, sendOrderCompletedEmail, sendPaymentReceivedEmail } from '@/lib/customerEmails';
 import { textToChoices } from '@/lib/optionsText';
 import {
   deleteProduct,
@@ -300,4 +301,21 @@ export async function resendInvoiceAction(orderId: number) {
   await requireAdmin();
   after(() => sendOrderInvoice(orderId));
   revalidatePath(`/admin/shop/orders/${orderId}`);
+}
+
+/** Approve or decline a customer's cancel / return / refund request. Approving a cancellation cancels the order. */
+export async function resolveOrderRequestAction(requestId: number, decision: 'approved' | 'declined', fd: FormData) {
+  await requireAdmin();
+  const r = await getOrderRequest(requestId);
+  if (!r || r.status !== 'pending') return;
+  const done = await resolveOrderRequest(requestId, decision, String(fd.get('note') ?? '').trim());
+  if (!done) return;
+  if (decision === 'approved' && r.type === 'cancel') {
+    const before = (await getOrder(r.order_id))?.order.status;
+    if (before && before !== 'cancelled') await setOrderStatus(r.order_id, 'cancelled');
+  }
+  after(() => sendOrderRequestResultEmail(requestId));
+  revalidatePath('/admin', 'layout');
+  revalidatePath('/shop', 'layout');
+  revalidatePath('/account', 'layout');
 }

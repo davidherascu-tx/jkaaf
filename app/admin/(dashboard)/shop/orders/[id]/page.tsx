@@ -15,6 +15,7 @@ import TrackingInfo from '@/components/shop/TrackingInfo';
 import { getUserById } from '@/lib/auth';
 import { fulfillmentLabel, FULFILLMENT_STATUSES, getOrder, ORDER_STATUS_LABEL } from '@/lib/shop';
 import OrderView from '@/components/shop/OrderView';
+import OrderRequestsCard from '@/components/admin/OrderRequestsCard';
 import { Badge, Card, inputClass, primaryBtn, secondaryBtn } from '@/components/shop/ui';
 
 export default async function AdminOrder({ params }: { params: Promise<{ id: string }> }) {
@@ -170,6 +171,8 @@ export default async function AdminOrder({ params }: { params: Promise<{ id: str
           </ul>
         </Card>
       )}
+
+      <OrderRequestsCard orderId={order.id} />
 
       <OrderView order={order} items={items} />
     </div>

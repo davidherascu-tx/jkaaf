@@ -1,5 +1,6 @@
 import 'server-only';
 import { query, queryOne, type DbRow, ts } from '@/lib/db';
+import { cardLabel } from '@/lib/payments/config';
 import { toUser, USER_COLS, type User } from '@/lib/auth';
 import { currentPriceCents, needsJkaApproval, type Product, type ProductInput } from '@/lib/products';
 
@@ -308,6 +309,8 @@ export interface Order {
   shipping?: string;
   /** Money already sent back to the customer for this order. */
   refunded_cents?: number;
+  /** e.g. "Visa ending in 4242" for a card payment; empty otherwise. */
+  card_label?: string;
 }
 export interface OrderItem {
   id: number;
@@ -405,6 +408,7 @@ const toOrder = (r: Row): Order => {
     customer_name: hasCustomer ? `${r.customer_first} ${r.customer_last}` : undefined,
     customer_email: hasCustomer ? (r.customer_email as string) : undefined,
     refunded_cents: Number(r.refunded_cents ?? 0),
+    card_label: cardLabel(r.pay_card_brand as string, r.pay_card_last4 as string),
     items_total: Number(r.items_total ?? 0),
     items_done: Number(r.items_done ?? 0),
     shipping: shippingSummary(Number(r.ship_total ?? 0), Number(r.ship_pending ?? 0), Number(r.ship_shipped ?? 0)),
@@ -423,6 +427,8 @@ export function shippingSummary(total: number, pending: number, shipped: number)
 const SHIPS = "(p.physical or x.selections::text ilike '%sticker or card%')";
 const ORDER_SELECT = `select o.*, u.first_name as customer_first, u.last_name as customer_last, u.email as customer_email,
     (select coalesce(sum(r.amount_cents), 0) from refunds r where r.order_id = o.id) as refunded_cents,
+    (select p.card_brand from payments p where p.order_id = o.id and p.card_last4 <> '' order by p.id desc limit 1) as pay_card_brand,
+    (select p.card_last4 from payments p where p.order_id = o.id and p.card_last4 <> '' order by p.id desc limit 1) as pay_card_last4,
     (select count(*) from order_items x where x.order_id = o.id) as items_total,
     (select count(*) from order_items x where x.order_id = o.id and x.fulfillment <> 'pending') as items_done,
     (select count(*) from order_items x left join products p on p.id = x.product_id where x.order_id = o.id and ${SHIPS}) as ship_total,

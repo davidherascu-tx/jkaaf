@@ -12,7 +12,7 @@ export default function OrderView({ order, items }: { order: Order; items: Order
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Order #{order.id}</h2>
-          <p className="text-sm text-gray-500">{order.created_at} UTC · Payment by {METHOD_SHORT[order.payment_method] ?? order.payment_method}</p>
+          <p className="text-sm text-gray-500">{order.created_at} UTC · Payment by {METHOD_SHORT[order.payment_method] ?? order.payment_method}{order.card_label ? ` (${order.card_label})` : ''}</p>
         </div>
         <Badge value={order.status} label={ORDER_STATUS_LABEL[order.status]} />
       </div>

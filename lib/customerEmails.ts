@@ -2,11 +2,15 @@ import 'server-only';
 import { getUserById } from '@/lib/auth';
 import { siteUrl } from '@/lib/siteUrl';
 import { sendMail } from '@/lib/email';
+import { queryOne } from '@/lib/db';
+import { cardLabel } from '@/lib/payments/config';
 import { emailButton, emailLayout, emailNote, escapeHtml } from '@/lib/emailTemplate';
 import { trackingUrl } from '@/lib/carriers';
 import { fulfillmentLabel, getOrder } from '@/lib/shop';
 import { formatCents } from '@/lib/money';
 import { buildInvoicePdf } from '@/lib/invoicePdf';
+import { getOrderRequest, REQUEST_LABEL } from '@/lib/orderRequests';
+import { orderSummaryHtml, orderSummaryText } from '@/lib/orderEmail';
 import { isExpired, timeLeftText, validThroughText } from '@/lib/membership';
 
 const link = async (path: string) => (await siteUrl()) + path;
@@ -19,9 +23,13 @@ interface Content {
   lines: string[];
   button?: { label: string; path: string };
   /** Trusted HTML shown in a highlighted box under the text. */
+  /** Trusted HTML block (and its plain-text lines) shown between the text and the highlighted box. */
+  extraHtml?: string;
+  extraText?: string[];
   noteHtml?: string;
   noteText?: string;
   attachments?: { filename: string; content: Uint8Array; contentType?: string }[];
+  bcc?: string;
 }
 
 /** Sends one branded customer email. Never throws: a mail problem must not break the action that triggered it. */
@@ -29,11 +37,12 @@ async function send(c: Content): Promise<void> {
   try {
     const url = c.button ? await link(c.button.path) : '';
     const body = `${c.lines.map((l) => `<p style="margin:0 0 14px">${escapeHtml(l)}</p>`).join('')}
+      ${c.extraHtml ? `<div style="margin:6px 0 18px">${c.extraHtml}</div>` : ''}
       ${c.noteHtml ? emailNote(c.noteHtml, 'green') : ''}
       ${url ? emailButton(url, c.button!.label) : ''}`;
     const html = emailLayout({ title: c.title, preheader: c.lines[0], body });
-    const text = [...c.lines, ...(c.noteText ? ['', c.noteText] : []), ...(url ? ['', `${c.button!.label}: ${url}`] : [])].join('\n');
-    const err = await sendMail({ to: c.to, subject: c.subject, html, text, attachments: c.attachments });
+    const text = [...c.lines, ...(c.extraText ? ['', ...c.extraText] : []), ...(c.noteText ? ['', c.noteText] : []), ...(url ? ['', `${c.button!.label}: ${url}`] : [])].join('\n');
+    const err = await sendMail({ to: c.to, subject: c.subject, html, text, attachments: c.attachments, bcc: c.bcc });
     if (err) console.error(`[email] "${c.subject}" not sent:`, err);
   } catch (e) {
     console.error(`[email] "${c.subject}" failed:`, e);
@@ -165,13 +174,30 @@ export async function sendPaymentReceivedEmail(orderId: number, preview?: { to: 
   } catch (e) {
     console.error(`[email] could not build the PAID invoice for order ${o.order.id}:`, e);
   }
+  // Online (card / PayPal) orders get a "Thank you for your order!" receipt with the payment details.
+  const online = o.order.payment_method !== 'check';
+  const pay = online ? await queryOne("select provider, provider_ref, amount_cents, card_brand, card_last4 from payments where order_id = $1 order by id desc limit 1", [o.order.id]) : null;
+  const amount = formatCents(pay ? Number(pay.amount_cents) : o.order.total_cents);
+  const withText = pay ? (pay.provider === 'paypal' ? 'PayPal' : cardLabel(pay.card_brand as string, pay.card_last4 as string).replace(' ending in ', ' ••') || 'Credit or debit card') : '';
+  const paymentBox = pay
+    ? `<strong style="font-size:15px">Payment received - ${escapeHtml(amount)} USD</strong><br>Paid with: ${escapeHtml(withText)}<br>Transaction ID: ${escapeHtml(String(pay.provider_ref))}`
+    : undefined;
+  const paymentText = pay ? `Payment received - ${amount} USD
+Paid with: ${withText}
+Transaction ID: ${pay.provider_ref}` : undefined;
   await send({
     to: preview?.to ?? o.to,
-    subject: `${preview ? '[TEST] ' : ''}Payment received for order #${o.order.id}`,
-    title: 'Payment received',
+    subject: `${preview ? '[TEST] ' : ''}${online ? `Thank you for your order #${o.order.id}!` : `Payment received for order #${o.order.id}`}`,
+    title: online ? 'Thank you for your order!' : 'Payment received',
+    extraHtml: online ? orderSummaryHtml({ order: o.order, items: o.items }, 'Total paid') : undefined,
+    extraText: online ? orderSummaryText({ order: o.order, items: o.items }, 'Total paid') : undefined,
+    noteHtml: paymentBox,
+    noteText: paymentText,
     lines: [
       `Hello ${o.name},`,
-      `Thank you! We received your payment of ${formatCents(o.order.total_cents)} for order #${o.order.id}.`,
+      online
+        ? `Thank you for your order! Your payment of ${amount} for order #${o.order.id} was received.`
+        : `Thank you! We received your payment of ${formatCents(o.order.total_cents)} for order #${o.order.id}.`,
       attachments
         ? 'Your invoice, stamped PAID, is attached to this email for your records.'
         : 'You can download your invoice from your order page.',
@@ -179,6 +205,8 @@ export async function sendPaymentReceivedEmail(orderId: number, preview?: { to: 
     ],
     button: orderButton(o.order.id),
     attachments,
+    // Online orders send no separate "new order" invoice, so the shop owner's copy comes with this email instead.
+    bcc: !preview && o.order.payment_method !== 'check' ? process.env.ORDER_NOTIFY_EMAIL || undefined : undefined,
   });
 }
 
@@ -252,6 +280,57 @@ export async function sendOrderCancelledEmail(orderId: number): Promise<void> {
     lines: [
       `Hello ${o.name},`,
       `Order #${o.order.id} was cancelled. If you did not expect this, or already sent a check, please contact JKA/AF.`,
+    ],
+    button: orderButton(o.order.id),
+  });
+}
+
+// ───────── Cancel / return / refund requests ─────────
+
+/** Tells JKA/AF a customer sent a cancellation, return or refund request. */
+export async function sendOrderRequestAdminEmail(requestId: number): Promise<void> {
+  const to = process.env.ORDER_NOTIFY_EMAIL || process.env.APPLICATION_NOTIFY_EMAIL || '';
+  if (!to) {
+    console.warn('[email] Set ORDER_NOTIFY_EMAIL to be told about cancel / return / refund requests.');
+    return;
+  }
+  const r = await getOrderRequest(requestId);
+  if (!r) return;
+  await send({
+    to,
+    subject: `${REQUEST_LABEL[r.type]} for order #${r.order_id}`,
+    title: REQUEST_LABEL[r.type],
+    lines: [
+      `${r.customer_name} (${r.customer_email}) sent a ${REQUEST_LABEL[r.type].toLowerCase()} for order #${r.order_id}.`,
+      r.reason ? `Reason: ${r.reason}` : 'No reason was given.',
+    ],
+    button: { label: `Review order #${r.order_id}`, path: `/admin/shop/orders/${r.order_id}` },
+  });
+}
+
+/** Tells the customer what the shop owner decided. */
+export async function sendOrderRequestResultEmail(requestId: number): Promise<void> {
+  const r = await getOrderRequest(requestId);
+  if (!r || r.status === 'pending') return;
+  const o = await orderContext(r.order_id);
+  if (!o) return;
+  const approved = r.status === 'approved';
+  const what = REQUEST_LABEL[r.type].toLowerCase();
+  const next =
+    r.type === 'cancel'
+      ? 'Your order was cancelled. If you already paid, your refund is processed separately and you will get another email when it is sent.'
+      : r.type === 'return'
+        ? 'Please follow any return instructions below. Your refund is sent once the return is received.'
+        : 'Your refund is processed separately and you will get another email when it is sent.';
+  await send({
+    to: o.to,
+    subject: `Your ${what} for order #${o.order.id} was ${approved ? 'approved' : 'declined'}`,
+    title: `${REQUEST_LABEL[r.type]} ${approved ? 'approved' : 'declined'}`,
+    lines: [
+      `Hello ${o.name},`,
+      `Your ${what} for order #${o.order.id} was ${approved ? 'approved' : 'declined'}.`,
+      ...(approved ? [next] : ['If you have questions, please contact JKA/AF.']),
+      ...(r.admin_note ? [`Message from JKA/AF: ${r.admin_note}`] : []),
     ],
     button: orderButton(o.order.id),
   });

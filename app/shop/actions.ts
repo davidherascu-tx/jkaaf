@@ -12,6 +12,8 @@ import { normalizeUsState } from "@/lib/regions";
 import { isMethodEnabled } from "@/lib/payments/config";
 import { startOnlinePayment } from "@/lib/payments";
 import { siteOrigin } from "@/lib/emailVerification";
+import { sendOrderCancelledEmail, sendOrderRequestAdminEmail } from "@/lib/customerEmails";
+import { createOrderRequest, listOrderRequests, orderActions, type RequestType } from "@/lib/orderRequests";
 import {
   addToCart,
   cartNeedsShipping,
@@ -20,6 +22,7 @@ import {
   getProductById,
   placeOrder,
   setCartQuantity,
+  setOrderStatus,
   type Selections,
 } from "@/lib/shop";
 
@@ -134,14 +137,17 @@ export async function checkoutAction(
 
   const result = await placeOrder(user, ship, str(fd, "notes").slice(0, 1000), method);
   if ("error" in result) return { error: result.error };
-  after(() => sendOrderInvoice(result.orderId));
 
-  // Card / PayPal: the order exists (awaiting payment); send the customer to the payment page.
+  // Card / PayPal: the order exists (awaiting payment); send the customer to the payment page. No invoice email yet:
+  // once the payment goes through they get one email with the PAID invoice. If the payment cannot be started, send the
+  // normal invoice so they still have the order details and a way to pay.
   if (method !== "check") {
     const started = await startOnlinePayment(result.orderId, method, await siteOrigin());
     if ("url" in started) redirect(started.url);
+    after(() => sendOrderInvoice(result.orderId));
     redirect(`/shop/orders/${result.orderId}?placed=1&payerror=1`);
   }
+  after(() => sendOrderInvoice(result.orderId));
   redirect(`/shop/orders/${result.orderId}?placed=1`);
 }
 
@@ -155,4 +161,51 @@ export async function payNowAction(orderId: number, method: string) {
   const started = await startOnlinePayment(orderId, method, await siteOrigin());
   if ("url" in started) redirect(started.url);
   redirect(`/shop/orders/${orderId}?payerror=1`);
+}
+
+/** The customer cancels their own order while it is still unpaid. */
+export async function cancelOrderAction(orderId: number) {
+  const user = await getUser();
+  if (!user) redirect("/account/login");
+  const found = await getOrder(orderId);
+  if (!found || found.order.user_id !== user.id) redirect("/account/orders");
+  if (found.order.status === "awaiting_payment") {
+    await setOrderStatus(orderId, "cancelled");
+    after(() => sendOrderCancelledEmail(orderId));
+    revalidatePath("/account", "layout");
+    revalidatePath("/admin", "layout");
+  }
+  redirect(`/shop/orders/${orderId}`);
+}
+
+export interface OrderRequestState {
+  error?: string;
+  done?: string;
+}
+
+/** A cancellation (paid, nothing shipped), return or refund request. The shop owner approves or declines it. */
+export async function submitOrderRequestAction(
+  orderId: number,
+  type: RequestType,
+  _prev: OrderRequestState,
+  fd: FormData,
+): Promise<OrderRequestState> {
+  const user = await getUser();
+  if (!user) redirect("/account/login");
+  const found = await getOrder(orderId);
+  if (!found || found.order.user_id !== user.id) return { error: "Order not found." };
+  const reason = str(fd, "reason");
+  if (reason.length < 3) return { error: "Please tell us why, in a few words." };
+
+  const pending = (await listOrderRequests(orderId)).some((r) => r.status === "pending");
+  const allowed = orderActions(found.order, found.items, pending);
+  const ok = type === "cancel" ? allowed.cancel : type === "return" ? allowed.return : type === "refund" ? allowed.refund : false;
+  if (!ok) return { error: "That request is not available for this order right now." };
+
+  const created = await createOrderRequest({ orderId, userId: user.id, type, reason });
+  if ("error" in created) return { error: created.error };
+  after(() => sendOrderRequestAdminEmail(created.id));
+  revalidatePath(`/shop/orders/${orderId}`);
+  revalidatePath("/admin", "layout");
+  return { done: "Your request was sent. We will review it and email you." };
 }

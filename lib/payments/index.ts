@@ -3,7 +3,7 @@ import { query, queryOne, ts } from '@/lib/db';
 import { getOrder, setPaymentReceived } from '@/lib/shop';
 import { sendOrderCompletedEmail, sendPaymentReceivedEmail, sendRefundEmail } from '@/lib/customerEmails';
 import { isMethodEnabled, type PayMethod } from '@/lib/payments/config';
-import { createCheckoutSession, refundPaymentIntent } from '@/lib/payments/stripe';
+import { createCheckoutSession, getCardDetails, refundPaymentIntent, retrieveCheckoutSession } from '@/lib/payments/stripe';
 import { createPayPalOrder, refundCapture } from '@/lib/payments/paypal';
 
 export interface Payment {
@@ -13,6 +13,8 @@ export interface Payment {
   provider_ref: string;
   amount_cents: number;
   refunded_cents: number;
+  card_brand: string;
+  card_last4: string;
   created_at: string;
 }
 
@@ -33,6 +35,8 @@ const toPayment = (r: Record<string, unknown>): Payment => ({
   provider_ref: r.provider_ref as string,
   amount_cents: r.amount_cents as number,
   refunded_cents: r.refunded_cents as number,
+  card_brand: (r.card_brand as string) ?? '',
+  card_last4: (r.card_last4 as string) ?? '',
   created_at: ts(r.created_at as Date),
 });
 
@@ -89,9 +93,10 @@ export async function markOrderPaid(opts: { orderId: number; provider: 'stripe' 
   if (!found) return 'unknown_order';
   const { order } = found;
 
+  const card = opts.provider === 'stripe' ? await getCardDetails(opts.providerRef) : null;
   const inserted = await queryOne(
-    'insert into payments (order_id, provider, provider_ref, amount_cents) values ($1, $2, $3, $4) on conflict do nothing returning id',
-    [opts.orderId, opts.provider, opts.providerRef, opts.amountCents],
+    'insert into payments (order_id, provider, provider_ref, amount_cents, card_brand, card_last4) values ($1, $2, $3, $4, $5, $6) on conflict do nothing returning id',
+    [opts.orderId, opts.provider, opts.providerRef, opts.amountCents, card?.brand ?? '', card?.last4 ?? ''],
   );
   if (!inserted) return 'duplicate';
 
@@ -112,6 +117,26 @@ export async function markOrderPaid(opts: { orderId: number; provider: 'stripe' 
     if (now?.order.status === 'completed') await sendOrderCompletedEmail(order.id);
   }
   return 'recorded';
+}
+
+/**
+ * Confirms a Stripe payment without a webhook: asks Stripe about the Checkout Session started for this order and,
+ * if it was paid, marks the order paid. Safe to call on every visit to the order page (it only counts once).
+ */
+export async function confirmStripePayment(orderId: number): Promise<void> {
+  if (!isMethodEnabled('stripe')) return;
+  try {
+    const row = await queryOne('select status, payment_method, provider_ref from orders where id = $1', [orderId]);
+    const ref = (row?.provider_ref as string | null) ?? '';
+    if (!row || row.status !== 'awaiting_payment' || row.payment_method !== 'stripe' || !ref.startsWith('cs_')) return;
+    const session = await retrieveCheckoutSession(ref);
+    const sessionOrder = Number(session.metadata?.order_id ?? session.client_reference_id);
+    if (session.payment_status === 'paid' && sessionOrder === orderId && session.payment_intent) {
+      await markOrderPaid({ orderId, provider: 'stripe', providerRef: session.payment_intent, amountCents: Number(session.amount_total) });
+    }
+  } catch (e) {
+    console.error(`[payments] could not confirm Stripe payment for order ${orderId}:`, e);
+  }
 }
 
 // ───────── Check payments (recorded by the admin) ─────────

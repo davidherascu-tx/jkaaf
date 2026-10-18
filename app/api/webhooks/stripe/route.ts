@@ -1,5 +1,5 @@
 import { firstTimeSeen, markOrderPaid, syncExternalRefund } from '@/lib/payments';
-import { stripeEnabled } from '@/lib/payments/config';
+import { stripeWebhookEnabled } from '@/lib/payments/config';
 import { verifyStripeSignature } from '@/lib/payments/pure';
 
 export const dynamic = 'force-dynamic';
@@ -14,10 +14,11 @@ interface StripeEvent {
  * Stripe tells us here when a payment succeeded or a charge was refunded.
  * In the Stripe dashboard add a webhook endpoint  https://YOUR-SITE/api/webhooks/stripe  for the events
  * checkout.session.completed, checkout.session.async_payment_succeeded and charge.refunded,
- * and put its signing secret in STRIPE_WEBHOOK_SECRET.
+ * and put its signing secret in STRIPE_WEBHOOK_SECRET. This is optional: without it, payments are confirmed when
+ * the customer returns to the order page.
  */
 export async function POST(request: Request) {
-  if (!stripeEnabled()) return new Response('Stripe is not set up.', { status: 404 });
+  if (!stripeWebhookEnabled()) return new Response('Stripe webhook is not set up.', { status: 404 });
 
   // The signature is calculated over the exact raw text, so read it as text (never parse before verifying).
   const raw = await request.text();

@@ -22,6 +22,40 @@ async function stripe<T>(path: string, params: Record<string, unknown>, idempote
   return data;
 }
 
+/** Reads a Checkout Session back from Stripe (used to confirm a payment without a webhook). */
+export async function retrieveCheckoutSession(sessionId: string) {
+  const res = await fetch(`${API}/checkout/sessions/${encodeURIComponent(sessionId)}`, {
+    headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+    cache: 'no-store',
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: { message?: string };
+    payment_status?: string;
+    payment_intent?: string | null;
+    amount_total?: number;
+    metadata?: Record<string, string>;
+    client_reference_id?: string | null;
+  };
+  if (!res.ok) throw new Error(data.error?.message || `Stripe error (${res.status})`);
+  return data;
+}
+
+/** Brand and last four digits of the card behind a PaymentIntent. Best effort: returns null if Stripe does not say. */
+export async function getCardDetails(paymentIntentId: string): Promise<{ brand: string; last4: string } | null> {
+  try {
+    const res = await fetch(`${API}/payment_intents/${encodeURIComponent(paymentIntentId)}?expand[]=latest_charge`, {
+      headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { latest_charge?: { payment_method_details?: { card?: { brand?: string; last4?: string } } } | null };
+    const card = data.latest_charge?.payment_method_details?.card;
+    return card?.last4 && /^\d{4}$/.test(card.last4) ? { brand: card.brand ?? '', last4: card.last4 } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Starts a Stripe Checkout payment for an order. The amount always comes from our own order (never from the browser).
  * Returns the page to send the customer to; the order is marked paid later by the webhook.
@@ -38,6 +72,8 @@ export async function createCheckoutSession(order: Order, items: OrderItem[], em
     '/checkout/sessions',
     {
       mode: 'payment',
+      // Plain card entry (Apple Pay / Google Pay still work). Stripe Link is left out because it does not reveal the card's last four digits.
+      payment_method_types: ['card'],
       client_reference_id: String(order.id),
       customer_email: email,
       success_url: `${origin}/shop/orders/${order.id}?placed=1&paid=1`,

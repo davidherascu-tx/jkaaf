@@ -89,7 +89,7 @@ export async function buildInvoicePdf(order: Order, items: OrderItem[]): Promise
   const date = new Date(order.created_at.replace(' ', 'T') + 'Z').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
   text(`Order #${order.id}`, M, y, 14, bold);
   text(`Date: ${date}`, M, y - 16, 10, regular, MUTED);
-  text(`Payment method: ${METHOD_LABEL[order.payment_method] ?? order.payment_method}`, M, y - 30, 10, regular, MUTED);
+  text(`Payment method: ${METHOD_LABEL[order.payment_method] ?? order.payment_method}${paid && order.card_label ? ` (${order.card_label})` : ''}`, M, y - 30, 10, regular, MUTED);
   if (paid) {
     // A tilted stamp with a double border, like an ink stamp: PAID (or REFUNDED once everything was sent back).
     const refunded = (order.refunded_cents ?? 0) >= order.total_cents;

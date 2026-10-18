@@ -1,5 +1,5 @@
 import { listPayments, listRefunds } from '@/lib/payments';
-import { METHOD_LABEL } from '@/lib/payments/config';
+import { cardLabel, METHOD_LABEL } from '@/lib/payments/config';
 import { formatCents } from '@/lib/money';
 import type { Order } from '@/lib/shop';
 import RefundForm from '@/components/admin/RefundForm';
@@ -27,7 +27,7 @@ export default async function PaymentsCard({ order }: { order: Order }) {
             <li key={p.id} className="py-3 first:pt-0 last:pb-0">
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <p className="font-semibold text-gray-900">
-                  {METHOD_LABEL[p.provider] ?? p.provider} · {formatCents(p.amount_cents)}
+                  {METHOD_LABEL[p.provider] ?? p.provider}{p.card_last4 ? ` (${cardLabel(p.card_brand, p.card_last4)})` : ''} · {formatCents(p.amount_cents)}
                   <span className="ml-2 font-normal text-gray-500">{p.created_at} UTC</span>
                 </p>
                 <p className="text-gray-600">
