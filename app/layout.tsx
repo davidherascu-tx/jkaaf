@@ -2,6 +2,7 @@ import './globals.css';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import ScrollToTop from '@/components/ScrollToTop';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -22,6 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={jakarta.variable} suppressHydrationWarning>
       <body className="bg-gray-50 text-gray-900 min-h-screen flex flex-col" suppressHydrationWarning>
+        <ScrollToTop />
         <Navbar />
         <main className="flex-grow flex flex-col">{children}</main>
         <Footer />
